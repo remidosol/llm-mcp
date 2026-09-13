@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: credit-service
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  cache:
+    type: redis
+    # "credits" cache: TTL 5s, configured in CacheConfig
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.block.ms: 5000            # fail fast when the broker is unreachable (outbox retries next tick)
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: credit-service
+      auto-offset-reset: earliest   # a new group starts from the beginning of the topic
+
+server:
+  port: 8082
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches
+  endpoint:
+    health:
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,db,redis,kafka
+
+logging:
+  pattern:
+    correlation: "[${spring.application.name},%X{jobId:-}] "
+
+app:
+  security:
+    api-keys: ${APP_API_KEYS:local-dev-key}          # comma-separated; ROLE_USER
+    admin-api-keys: ${APP_ADMIN_API_KEYS:local-admin-key} # ROLE_ADMIN (+USER)
+  outbox:
+    publisher: polling      # polling | cdc (cdc = Debezium reads the outbox table; poller disabled)
+    poll-interval: 500ms
+    batch-size: 100
+    send-timeout: 10s
+    retention: 7d
+    retention-cron: "0 0 3 * * *"
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
