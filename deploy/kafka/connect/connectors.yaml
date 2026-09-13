@@ -1,0 +1,116 @@
+# One Debezium connector per service database (same config as deploy/debezium/*.json, credentials via ${env:...}).
+# The llm connector is derived from the job one: the outbox table and EventRouter settings are identical by design.
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: job-outbox
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: debezium
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: "pg-rw.db.svc.cluster.local"
+    database.port: "5432"
+    database.user: "job"
+    database.password: "${env:PG_JOB_PASSWORD}"
+    database.dbname: "job_db"
+    topic.prefix: "jobdb"
+    plugin.name: "pgoutput"
+    publication.name: "job_outbox_pub"
+    publication.autocreate.mode: "filtered"
+    slot.name: "job_outbox"
+    snapshot.mode: "no_data"
+    table.include.list: "public.outbox"
+    tombstones.on.delete: "false"
+    heartbeat.interval.ms: "10000"
+    transforms: "outbox"
+    transforms.outbox.type: "io.debezium.transforms.outbox.EventRouter"
+    transforms.outbox.route.by.field: "aggregatetype"
+    transforms.outbox.route.topic.replacement: "${routedByValue}.events.v1"
+    transforms.outbox.table.field.event.key: "aggregateid"
+    transforms.outbox.table.field.event.payload: "payload"
+    transforms.outbox.table.expand.json.payload: "true"
+    transforms.outbox.table.fields.additional.placement: "type:header:eventType,id:header:eventId"
+    transforms.outbox.table.op.invalid.behavior: "warn"
+    key.converter: "org.apache.kafka.connect.storage.StringConverter"
+    value.converter: "org.apache.kafka.connect.json.JsonConverter"
+    value.converter.schemas.enable: "false"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: credit-outbox
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: debezium
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: "pg-rw.db.svc.cluster.local"
+    database.port: "5432"
+    database.user: "credit"
+    database.password: "${env:PG_CREDIT_PASSWORD}"
+    database.dbname: "credit_db"
+    topic.prefix: "creditdb"
+    plugin.name: "pgoutput"
+    publication.name: "credit_outbox_pub"
+    publication.autocreate.mode: "filtered"
+    slot.name: "credit_outbox"
+    snapshot.mode: "no_data"
+    table.include.list: "public.outbox"
+    tombstones.on.delete: "false"
+    heartbeat.interval.ms: "10000"
+    transforms: "outbox"
+    transforms.outbox.type: "io.debezium.transforms.outbox.EventRouter"
+    transforms.outbox.route.by.field: "aggregatetype"
+    transforms.outbox.route.topic.replacement: "${routedByValue}.events.v1"
+    transforms.outbox.table.field.event.key: "aggregateid"
+    transforms.outbox.table.field.event.payload: "payload"
+    transforms.outbox.table.expand.json.payload: "true"
+    transforms.outbox.table.fields.additional.placement: "type:header:eventType,id:header:eventId"
+    transforms.outbox.table.op.invalid.behavior: "warn"
+    key.converter: "org.apache.kafka.connect.storage.StringConverter"
+    value.converter: "org.apache.kafka.connect.json.JsonConverter"
+    value.converter.schemas.enable: "false"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: llm-outbox
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: debezium
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: "pg-rw.db.svc.cluster.local"
+    database.port: "5432"
+    database.user: "llm"
+    database.password: "${env:PG_LLM_PASSWORD}"
+    database.dbname: "llm_db"
+    topic.prefix: "llmdb"
+    plugin.name: "pgoutput"
+    publication.name: "llm_outbox_pub"
+    publication.autocreate.mode: "filtered"
+    slot.name: "llm_outbox"
+    snapshot.mode: "no_data"
+    table.include.list: "public.outbox"
+    tombstones.on.delete: "false"
+    heartbeat.interval.ms: "10000"
+    transforms: "outbox"
+    transforms.outbox.type: "io.debezium.transforms.outbox.EventRouter"
+    transforms.outbox.route.by.field: "aggregatetype"
+    transforms.outbox.route.topic.replacement: "${routedByValue}.events.v1"
+    transforms.outbox.table.field.event.key: "aggregateid"
+    transforms.outbox.table.field.event.payload: "payload"
+    transforms.outbox.table.expand.json.payload: "true"
+    transforms.outbox.table.fields.additional.placement: "type:header:eventType,id:header:eventId"
+    transforms.outbox.table.op.invalid.behavior: "warn"
+    key.converter: "org.apache.kafka.connect.storage.StringConverter"
+    value.converter: "org.apache.kafka.connect.json.JsonConverter"
+    value.converter.schemas.enable: "false"

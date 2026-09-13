@@ -1,0 +1,23 @@
+# GKE Autopilot (Phase 7): images from Artifact Registry (tags set by the deploy workflow with
+# `kustomize edit set image`), JSON logs via the gke profile, 2 replicas for the stateless services.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: llm-mcp/job-service
+    newName: europe-west1-docker.pkg.dev/PROJECT_ID/llm-mcp/job-service
+    newTag: latest
+  - name: llm-mcp/credit-service
+    newName: europe-west1-docker.pkg.dev/PROJECT_ID/llm-mcp/credit-service
+    newTag: latest
+  - name: llm-mcp/llm-worker
+    newName: europe-west1-docker.pkg.dev/PROJECT_ID/llm-mcp/llm-worker
+    newTag: latest
+replicas:
+  - name: job-service
+    count: 2
+  - name: credit-service
+    count: 2
+patches:
+  - path: config-gke.yaml

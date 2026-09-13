@@ -1,0 +1,55 @@
+# Kafbat kafka-ui inside the cluster (same image as compose): topics, messages, consumer groups and lag.
+# Reach it with `make kafka-ui` (port-forward to http://localhost:8090). Not exposed otherwise.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ui
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-ui
+  template:
+    metadata:
+      labels:
+        app: kafka-ui
+    spec:
+      containers:
+        - name: kafka-ui
+          image: ghcr.io/kafbat/kafka-ui:v1.5.0
+          env:
+            - name: KAFKA_CLUSTERS_0_NAME
+              value: llm-mcp
+            - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+              value: llm-mcp-kafka-bootstrap:9092
+            - name: DYNAMIC_CONFIG_ENABLED
+              value: "true"
+            - name: JAVA_OPTS
+              value: -XX:MaxRAMPercentage=75
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 12
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-ui
+  namespace: kafka
+spec:
+  selector:
+    app: kafka-ui
+  ports:
+    - port: 8080
+      targetPort: 8080

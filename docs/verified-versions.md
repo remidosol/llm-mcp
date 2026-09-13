@@ -78,7 +78,17 @@ Verified 2026-08-29 unless noted.
 | Structured logging | `logging.structured.format.console=ecs` (Boot ≥ 3.4) | https://docs.spring.io/spring-boot/reference/features/logging.html#features.logging.structured |
 | MCP Inspector CLI | `npx @modelcontextprotocol/inspector --cli <url> --transport http --method tools/list` | https://github.com/modelcontextprotocol/inspector#cli-mode |
 
+## Phase 6 verifications (2026-09-13)
+
+| Item | Value | Where verified |
+|---|---|---|
+| kind | v0.33.0; node image `kindest/node:v1.34.11@sha256:44e222ee2132dab25ff87301682f89eb82c7880ea3a1bf543bfe9708fd08d67d` (digest-pinned per release notes) | https://github.com/kubernetes-sigs/kind/releases/tag/v0.33.0 |
+| Strimzi | 1.2.0 — Helm OCI chart `oci://quay.io/strimzi-helm/strimzi-kafka-operator --version 1.2.0` (Helm 4.2 OK); CRDs `kafka.strimzi.io/v1`; Kafka 4.2.0–4.3.1; image `quay.io/strimzi/kafka:1.2.0-kafka-4.3.1`; min K8s 1.30; node pools + KRaft default (no annotations) | https://strimzi.io/downloads/, `examples/kafka/kafka-single-node.yaml` at tag 1.2.0, `helm show chart` |
+| CloudNativePG | 1.30.0 — `https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.30/releases/cnpg-1.30.0.yaml` (server-side apply, ns `cnpg-system`); `Database` CRD `postgresql.cnpg.io/v1` (`spec.name/owner/cluster.name`); inline `spec.managed.roles[].passwordSecret.name` (+ new `DatabaseRole` CRD) | release-1.30 docs sources on GitHub |
+| Jib | 3.5.2, `com.google.cloud.tools:jib-maven-plugin`; goals `jib:dockerBuild`/`jib:build`; keys `from.image`, `from.platforms`, `to.image`, `to.tags`, `container.ports/user/creationTime`; default platform is amd64 → set arm64 explicitly on Apple Silicon | jib-maven-plugin README |
+| Debezium plugin | `debezium-connector-postgres-3.6.1.Final-plugin.tar.gz` on Maven Central (HTTP 200) | curl -I |
+
 ## Phase 4+ items still to verify before first use
 
 - Spring Data Redis 4 Jackson-3 JSON cache serializer class (cache currently uses JDK serialization)
-- Jib 3.5.2 config keys (Phase 6), Strimzi `KafkaConnect.spec.build` field names (Phase 6), CDKTN setup (Phase 7), `grafana/otel-lgtm` OTLP property keys for Boot 4 (Phase 7), Helm 4.2 compatibility with the Strimzi chart (Phase 6)
+- CDKTN setup (Phase 7), `grafana/otel-lgtm` OTLP property keys for Boot 4 (Phase 7)

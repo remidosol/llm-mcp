@@ -1,12 +1,8 @@
-# Kubernetes/GKE profile (Phase 6/7): JSON logs for Loki, secrets and hosts from the environment.
+# GKE additions on top of the k8s profile (SPRING_PROFILES_ACTIVE=k8s,gke): JSON logs for Loki.
 logging:
   structured:
     format:
       console: ecs        # Elastic Common Schema JSON; MDC (jobId) becomes a top-level field
-spring:
-  docker:
-    compose:
-      enabled: false
 app:
   security:
     mcp-open: false       # /mcp behind the API key outside a laptop

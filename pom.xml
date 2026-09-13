@@ -36,6 +36,9 @@
         <archunit.version>1.5.0</archunit.version>
         <resilience4j.version>2.4.0</resilience4j.version>
         <wiremock.version>3.13.1</wiremock.version>
+        <jib.version>3.5.2</jib.version>
+        <!-- image platform: arm64 on Apple Silicon laptops/kind, amd64 for GKE (-Dcontainer.arch=amd64) -->
+        <container.arch>arm64</container.arch>
         <json-schema-validator.version>3.0.5</json-schema-validator.version> <!-- Jackson-3 native line; 3.0.5 targets jackson 3.1.x = Boot 4.1.1 -->
     </properties>
 
@@ -112,6 +115,34 @@
                                 <artifactId>lombok</artifactId>
                             </exclude>
                         </excludes>
+                    </configuration>
+                </plugin>
+                <!-- Jib (ADR-0013): daemonless, layered (deps / snapshot deps / resources / classes),
+                     reproducible images without a Dockerfile; jib:dockerBuild for kind, jib:build for a registry -->
+                <plugin>
+                    <groupId>com.google.cloud.tools</groupId>
+                    <artifactId>jib-maven-plugin</artifactId>
+                    <version>${jib.version}</version>
+                    <configuration>
+                        <from>
+                            <image>eclipse-temurin:21-jre</image>
+                            <platforms>
+                                <platform>
+                                    <architecture>${container.arch}</architecture>
+                                    <os>linux</os>
+                                </platform>
+                            </platforms>
+                        </from>
+                        <to>
+                            <image>llm-mcp/${project.artifactId}</image>
+                            <tags>
+                                <tag>local</tag>
+                            </tags>
+                        </to>
+                        <container>
+                            <user>1000:1000</user>
+                            <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        </container>
                     </configuration>
                 </plugin>
             </plugins>

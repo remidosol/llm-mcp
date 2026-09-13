@@ -1,0 +1,54 @@
+# Kafka Connect under Strimzi (Phase 6 stretch; the services stay on the polling publisher until
+# `make deploy-cdc` flips APP_OUTBOX_PUBLISHER=cdc). Secrets reach the connector configs through the
+# EnvVarConfigProvider: `${env:PG_PASSWORD}` in a KafkaConnector resolves inside the Connect JVM.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: debezium
+  namespace: kafka
+  annotations:
+    strimzi.io/use-connector-resources: "true"   # KafkaConnector CRs manage connectors (no REST calls)
+spec:
+  version: 4.3.1
+  replicas: 1
+  image: llm-mcp/kafka-connect-debezium:local
+  bootstrapServers: llm-mcp-kafka-bootstrap:9092
+  groupId: debezium-connect
+  configStorageTopic: debezium-connect-configs
+  offsetStorageTopic: debezium-connect-offsets
+  statusStorageTopic: debezium-connect-status
+  config:
+    config.storage.replication.factor: -1
+    offset.storage.replication.factor: -1
+    status.storage.replication.factor: -1
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.storage.StringConverter
+    config.providers: env
+    config.providers.env.class: org.apache.kafka.common.config.provider.EnvVarConfigProvider
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 768Mi
+  jvmOptions:
+    -Xms: 256m
+    -Xmx: 256m
+  template:
+    connectContainer:
+      env:
+        - name: PG_JOB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pg-job
+              key: password
+        - name: PG_CREDIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pg-credit
+              key: password
+        - name: PG_LLM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pg-llm
+              key: password

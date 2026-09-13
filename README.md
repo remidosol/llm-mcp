@@ -62,4 +62,15 @@ Every consumer runs through an inbox (`processed_event`), every producer through
 transitions are a table, out-of-order events walk their implied path, invalid ones are counted and ignored.
 Run it: `make compose-up && make run-all && make smoke` (see [docs/runbook.md](docs/runbook.md)).
 
+## Kubernetes (kind)
+
+```bash
+make kind-up && make kind-load && make deploy-local && make smoke-k8s
+```
+
+Strimzi 1.2 (KRaft, node pools) for Kafka, CloudNativePG 1.30 for Postgres (one cluster, three
+databases), Redis, and the three services built with Jib and deployed with Kustomize
+(`deploy/k8s/base` + `overlays/local|gke`). Secrets are generated from `.env` by
+`scripts/k8s-secrets.sh`; nothing sensitive is committed. Details in [docs/runbook.md](docs/runbook.md).
+
 Architecture diagram and the full demo script arrive with Phase 8.

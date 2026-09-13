@@ -116,6 +116,45 @@ curl -s localhost:8083/actuator/prometheus | grep -E 'resilience4j_circuitbreake
 curl -s localhost:8081/actuator/health/readiness | jq
 ```
 
+## Kubernetes on kind (Phase 6)
+
+```bash
+make kind-up            # kind cluster llm-mcp: control-plane + worker, host :30080 -> job-service NodePort
+make kind-load          # Jib -> local Docker daemon (arm64) + Debezium Connect image, then kind load
+make deploy-local       # Strimzi (Helm, ns kafka) + CNPG (manifest, ns cnpg-system) + Kafka/topics + Postgres/roles/databases
+                        #   + Secrets from .env (scripts/k8s-secrets.sh) + kubectl apply -k deploy/k8s/overlays/local
+make smoke-k8s          # smoke through port-forwards; event trail read inside the broker pod
+make deploy-cdc         # stretch: KafkaConnect + 3 KafkaConnectors, services switched to APP_OUTBOX_PUBLISHER=cdc
+make pg-forward         # Postgres at localhost:5433 (pgAdmin/psql): db job_db user job, credit_db/credit, llm_db/llm, password = POSTGRES_PASSWORD
+make kafka-ui           # port-forward Kafka UI to http://localhost:8090 (topics, messages, consumer groups)
+make k8s-status | k8s-reset | kind-down
+# kind has no UI of its own: `kubectl get pods -A` (everything lives in kafka/db/llm-mcp, NOT default),
+# or k9s (`brew install k9s`), Headlamp/OpenLens desktop apps. Docker Desktop's Kubernetes tab only
+# shows its own built-in cluster; the kind nodes appear under Containers as llm-mcp-control-plane/worker.
+
+# inspect
+kubectl get pods -A
+kubectl -n llm-mcp describe pod -l app=job-service | sed -n '/Events/,$p'     # probe failures, image pull, OOMKilled
+kubectl -n llm-mcp logs deploy/llm-worker -f --tail=100
+kubectl -n kafka get kafka,kafkanodepool,kafkatopic                          # Strimzi reconciliation status
+kubectl -n kafka exec llm-mcp-dual-role-0 -- /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --all-groups
+kubectl -n db get cluster,database                                            # CNPG: instances, primary, Database applied=true
+kubectl -n db exec pg-1 -- psql -U postgres -c '\l'                           # three databases, three owners
+kubectl -n kafka get kafkaconnector -o wide                                    # connector/task state (deploy-cdc)
+
+# reach the services from the laptop
+curl -s -H 'X-API-Key: local-dev-key' localhost:30080/api/jobs?limit=1 -H 'X-User-Id: u1'   # NodePort
+kubectl -n llm-mcp port-forward svc/credit-service 8082:8082                                   # anything else
+# MCP from Claude Code against the cluster: port-forward 8081 then `claude mcp add --transport http job-service-k8s http://localhost:8081/mcp --header "X-API-Key: local-dev-key"`
+
+# chaos
+kubectl -n llm-mcp delete pod -l app=llm-worker        # mid-job: inbox claim rolls back, redelivery on the new pod
+kubectl -n llm-mcp scale deploy/llm-worker --replicas=2 # watch the consumer group rebalance (3 partitions -> 2+1)
+kubectl -n llm-mcp patch deploy/job-service --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/path","value":"/nope"}]'
+#   -> new pod never Ready, rollout stalls, old pod keeps serving (readiness gates traffic, not the rollout's old pod)
+kubectl -n llm-mcp rollout undo deploy/job-service
+```
+
 ## Inspect
 
 ```bash
@@ -132,6 +171,15 @@ make compose-reset       # down -v: wipes pgdata (all three DBs) and recreates t
 ```
 
 Flyway re-runs migrations on next service start; `db/local/V900` reseeds demo data.
+
+## Troubleshooting (Kubernetes)
+- Pod `CrashLoopBackOff` right after start: `kubectl logs --previous`; JVM OOM shows as exit 137 / `OOMKilled` in `describe` — raise the memory limit, not `-Xmx` (heap is 75 % of the limit).
+- `0/1 Ready` forever: readiness probe fails — `curl` `/actuator/health/readiness` from inside (`kubectl exec … -- wget -qO- localhost:8081/actuator/health/readiness`) and read which of `db`/`redis`/`kafka` is DOWN.
+- `ErrImageNeverPull`: the image is not in the node — `make kind-load` again (tags must be `:local`, policy `Never`).
+- Kafka CR not Ready: `kubectl -n kafka get kafka llm-mcp -o jsonpath='{.status.conditions}'`; the node pool pod `llm-mcp-dual-role-0` logs.
+- CNPG `Database` `applied: false`: the owner role does not exist yet — roles are reconciled from `managed.roles` first; check `kubectl -n db get cluster pg -o jsonpath='{.status.managedRolesStatus}'`.
+- Secrets missing after `kind-down`/`kind-up`: rerun `scripts/k8s-secrets.sh` (they live only in the cluster).
+- CDC mode, connectors RUNNING but jobs stuck in CREATED: `kubectl -n kafka logs debezium-connect-0 | grep UNKNOWN_TOPIC` — the `__debezium-heartbeat.*` topics must exist (`deploy/kafka/connect/heartbeat-topics.yaml`); auto-creation is off on purpose.
 
 ## Troubleshooting
 
