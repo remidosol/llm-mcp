@@ -1,6 +1,6 @@
 # Runbook
 
-How to run, inspect, reset and demo. Grows with each phase; Phase 1 scope below.
+How to run, inspect, reset and demo — local (Compose), kind, and the GCP path.
 
 ## Run (local)
 
@@ -12,7 +12,7 @@ make run-job             # job-service :8081 (profile: local; JAVA_HOME resolved
 From IntelliJ: run `JobServiceApplication` with active profile `local` — Boot's Docker Compose
 support (`start-only`) brings the shared infra up and leaves it running.
 
-## Run everything (Phase 4)
+## Run everything
 
 ```bash
 make run-all      # job-service :8081, credit-service :8082, llm-worker :8083 in the background (.run/*.log)
@@ -23,20 +23,20 @@ make stop-all
 
 Local-profile knobs that make demos fast (production defaults in parentheses): job timeout 20 s (120 s),
 watchdog every 5 s (30 s), fake `[SLOW]` delay 30 s (150 s). Chaos prompts (fake provider only):
-`[FAIL]` → FAILED + release, `[FLAKY]` → retryable failures on attempts 1–2 (retries arrive in Phase 5),
+`[FAIL]` → FAILED + release, `[FLAKY]` → retryable failures on attempts 1–2 (Resilience4j retries them within one delivery),
 `[SLOW]` → TIMED_OUT + release, then a late result (`job_result.late = true`, `saga_late_result_total`).
 Replay exercise: run llm-worker with `SPRING_KAFKA_CONSUMER_GROUP_ID=llm-worker-replay` — Kafka
 re-delivers the whole topic, the inbox (keyed by the logical group `llm-worker`) skips every event.
 
-## Smoke (Phase 1)
+## Smoke by hand
 
 ```bash
 curl -s -X POST localhost:8081/api/jobs \
-  -H 'X-User-Id: u1' -H 'Content-Type: application/json' \
+  -H 'X-API-Key: local-dev-key' -H 'X-User-Id: u1' -H 'Content-Type: application/json' \
   -d '{"prompt":"hello","model":"fake:demo"}'
 # → 202 {"jobId": "...", "status": "CREATED", ...}
 
-curl -s localhost:8081/api/jobs/<jobId>   # run twice; second hit is served from Redis
+curl -s -H 'X-API-Key: local-dev-key' localhost:8081/api/jobs/<jobId>   # run twice; second hit is served from Redis
 # proof: TRACE logs from org.springframework.cache, or /actuator/metrics/cache.gets
 ```
 
@@ -44,7 +44,7 @@ curl -s localhost:8081/api/jobs/<jobId>   # run twice; second hit is served from
 - Kafka UI: <http://localhost:8090> — 6 topics (3 × `.events.v1` + 3 × `.DLT`) must exist
 - Health: `curl localhost:8081/actuator/health/readiness`
 
-## Kafka (Phase 2)
+## Kafka
 
 Event trail for one job (replace `<jobId>`):
 
@@ -69,7 +69,7 @@ records with the original headers plus `kafka_dlt-exception-message` etc. added 
 Metrics: `inbox_duplicate_total`, `dlt_messages_total{topic}` and the client's
 `kafka_consumer_fetch_manager_records_lag` on `/actuator/prometheus` of credit-service (:8082).
 
-## Outbox and CDC (Phase 3)
+## Outbox and CDC
 
 ```bash
 # pending outbox rows (polling mode drains them within ~0.5 s)
@@ -88,7 +88,7 @@ Switching modes: stop the services, change `APP_OUTBOX_PUBLISHER`, start again. 
 the poller was on and already published are not re-emitted by Debezium (`snapshot.mode=no_data`);
 rows created in CDC mode never get `published_at` (retention deletes them by age).
 
-## MCP, security, resilience (Phase 5)
+## MCP, security, resilience
 
 ```bash
 # API keys: every /api call needs X-API-Key (APP_API_KEYS); topup needs an admin key (APP_ADMIN_API_KEYS)
@@ -116,7 +116,7 @@ curl -s localhost:8083/actuator/prometheus | grep -E 'resilience4j_circuitbreake
 curl -s localhost:8081/actuator/health/readiness | jq
 ```
 
-## Kubernetes on kind (Phase 6)
+## Kubernetes on kind
 
 ```bash
 make kind-up            # kind cluster llm-mcp: control-plane + worker, host :30080 -> job-service NodePort
@@ -176,7 +176,7 @@ buck2 uquery "rdeps(//..., owner('contracts/src/main/java/com/remidosol/llmmcp/c
 Notes: rules live in `tools/buck2/rules/` (`tools/buck2` is the prelude cell; `command`, `files`, `group` + macros); `buck2 uquery --console none` prints nothing — use `--console simple`; changing any BUCK/.bzl file
 means "rebuild everything" for CI; `buck-out/` and `target/` are ignored by the graph.
 
-## Observability (Phase 7)
+## Observability
 
 ```bash
 # kind
@@ -189,7 +189,7 @@ curl -s 'localhost:3000/api/datasources/proxy/uid/tempo/api/search?tags=service.
 # every log line carries [service,traceId,spanId,jobId] — grep a jobId in Loki, click the trace_id to jump to Tempo
 ```
 
-## GCP / GKE (Phase 7 — NOT executed; costs money, needs an explicit OK)
+## GCP / GKE (NOT executed; costs money, needs an explicit OK)
 
 ```bash
 # 0. one-time, by hand (a backend cannot create its own bucket)
@@ -235,7 +235,7 @@ curl -s localhost:8081/actuator/prometheus | grep cache_
 make compose-reset       # down -v: wipes pgdata (all three DBs) and recreates topics
 ```
 
-Flyway re-runs migrations on next service start; `db/local/V900` reseeds demo data.
+Flyway re-runs migrations on next service start; the repeatable `db/local/R__seed_local.sql` reseeds demo data (`local` profile only).
 
 ## Troubleshooting (Kubernetes)
 - Pod `CrashLoopBackOff` right after start: `kubectl logs --previous`; JVM OOM shows as exit 137 / `OOMKilled` in `describe` — raise the memory limit, not `-Xmx` (heap is 75 % of the limit).
@@ -244,7 +244,7 @@ Flyway re-runs migrations on next service start; `db/local/V900` reseeds demo da
 - Kafka CR not Ready: `kubectl -n kafka get kafka llm-mcp -o jsonpath='{.status.conditions}'`; the node pool pod `llm-mcp-dual-role-0` logs.
 - CNPG `Database` `applied: false`: the owner role does not exist yet — roles are reconciled from `managed.roles` first; check `kubectl -n db get cluster pg -o jsonpath='{.status.managedRolesStatus}'`.
 - Secrets missing after `kind-down`/`kind-up`: rerun `scripts/k8s-secrets.sh` (they live only in the cluster).
-- `Validate failed: Migrations have failed validation` after pulling a new migration: an old local DB still records the pre-Phase-7 `V900` seed. Fix: `delete from flyway_schema_history where version='900'` in job_db/credit_db (kind: `kubectl -n db exec pg-1 -c postgres -- psql -U postgres -d job_db -c "..."`) or `make compose-reset` for compose.
+- `Validate failed: Migrations have failed validation` after pulling a new migration: an old local DB still records the former `V900` seed migration (replaced by `R__seed_local`). Fix: `delete from flyway_schema_history where version='900'` in job_db/credit_db (kind: `kubectl -n db exec pg-1 -c postgres -- psql -U postgres -d job_db -c "..."`) or `make compose-reset` for compose.
 - Changing the outbox schema or the EventRouter placement while in CDC mode: apply the migration first, let the connector drain the pre-migration WAL records with the OLD placement (task must be RUNNING and caught up), THEN change `table.fields.additional.placement` — otherwise the task fails with `<field> is not a valid field name` and stays FAILED (`kubectl -n kafka annotate kafkaconnector <name> strimzi.io/restart-task=0` after fixing).
 - CDC mode, connectors RUNNING but jobs stuck in CREATED: `kubectl -n kafka logs debezium-connect-0 | grep UNKNOWN_TOPIC` — the `__debezium-heartbeat.*` topics must exist (`deploy/kafka/connect/heartbeat-topics.yaml`); auto-creation is off on purpose.
 

@@ -64,7 +64,7 @@ Verified 2026-08-29 unless noted.
 - **Debezium 3.6 `snapshot.mode` values** are `initial`, `initial_only`, `no_data`, `always`, … (older `never`/`schema_only` names are gone); outbox connectors use `no_data` so already-published rows are not re-emitted (verified 2026-09-13 on the 3.6 Postgres connector page).
 - **CloudNativePG defaults `wal_level=logical`** — no extra config needed for Debezium (v1.30.0; `Database` CRD exists).
 
-## Phase 5 verifications (2026-09-13, from the resolved jars in ~/.m2 unless noted)
+## MCP, resilience and security (2026-09-13, from the resolved jars in ~/.m2 unless noted)
 
 | Item | Value | Where verified |
 |---|---|---|
@@ -74,13 +74,13 @@ Verified 2026-08-29 unless noted.
 | MCP Java SDK | 2.0.0 (`io.modelcontextprotocol.sdk:mcp`, `mcp-json-jackson3`) pulled by `spring-ai-starter-mcp-server-webmvc:2.0.1` | dependency tree |
 | MCP stateless endpoint property | `spring.ai.mcp.server.protocol=STATELESS` reads `spring.ai.mcp.server.streamable-http.mcp-endpoint` (default `/mcp`); no `stateless.*` prefix exists | `McpServerStatelessWebMvcAutoConfiguration` bytecode (javap) |
 | MCP annotation return types | `@McpComplete` → `CompleteResult`/`CompleteCompletion`/`List<String>`/`String`; `@McpResource` → `ReadResourceResult`/`List<ResourceContents>`/`ResourceContents`/`String`; `@McpPrompt` → `GetPromptResult`/`List<PromptMessage>`/`PromptMessage`/`String` | `Sync*MethodCallback.validateReturnType` bytecode |
-| CDKTN providers (Phase 7 restructure) | `io.cdktn:cdktn-provider-kubernetes:17.0.0` (packages `io.cdktn.providers.kubernetes.<resource>`; union-typed lists come back as `Object`), `io.cdktn:cdktn-provider-helm:15.1.0`, `org.yaml:snakeyaml:2.7`; Helm charts: `cloudnative-pg` 0.29.0 (app 1.30.0, repo https://cloudnative-pg.github.io/charts), `keda` 2.20.2 (repo https://kedacore.github.io/charts), Strimzi OCI 1.2.0; jsii forbids subclass methods named like resource properties (`metadata()`) | Maven Central listing, `helm show chart --repo`, synth |
+| CDKTN providers (common/main restructure) | `io.cdktn:cdktn-provider-kubernetes:17.0.0` (packages `io.cdktn.providers.kubernetes.<resource>`; union-typed lists come back as `Object`), `io.cdktn:cdktn-provider-helm:15.1.0`, `org.yaml:snakeyaml:2.7`; Helm charts: `cloudnative-pg` 0.29.0 (app 1.30.0, repo https://cloudnative-pg.github.io/charts), `keda` 2.20.2 (repo https://kedacore.github.io/charts), Strimzi OCI 1.2.0; jsii forbids subclass methods named like resource properties (`metadata()`) | Maven Central listing, `helm show chart --repo`, synth |
 | Buck2 / CI tooling | buck2 (local 2026-08-07 build; mise `buck2 = "latest"`), `jdx/mise-action@v4` (4.3.0), `actions/cache@v6`, `thollander/actions-comment-pull-request@v3` (3.0.1); `buck2 uquery` `owner()`/`rdeps()` verified locally; `supertd` has no published release for this fork | local runs, `gh api releases/latest` |
 | WireMock | `org.wiremock:wiremock-standalone:3.13.1`; API package still `com.github.tomakehurst.wiremock` | build |
 | Structured logging | `logging.structured.format.console=ecs` (Boot ≥ 3.4) | https://docs.spring.io/spring-boot/reference/features/logging.html#features.logging.structured |
 | MCP Inspector CLI | `npx @modelcontextprotocol/inspector --cli <url> --transport http --method tools/list` | https://github.com/modelcontextprotocol/inspector#cli-mode |
 
-## Phase 6 verifications (2026-09-13)
+## Kubernetes, images and CI (2026-09-13)
 
 | Item | Value | Where verified |
 |---|---|---|
@@ -92,7 +92,7 @@ Verified 2026-08-29 unless noted.
 | Jib | 3.5.2, `com.google.cloud.tools:jib-maven-plugin`; goals `jib:dockerBuild`/`jib:build`; keys `from.image`, `from.platforms`, `to.image`, `to.tags`, `container.ports/user/creationTime`; default platform is amd64 → set arm64 explicitly on Apple Silicon | jib-maven-plugin README |
 | Debezium plugin | `debezium-connector-postgres-3.6.1.Final-plugin.tar.gz` on Maven Central (HTTP 200) | curl -I |
 
-## Phase 7 verifications (2026-09-13)
+## Cloud, CI/CD and observability (2026-09-13)
 
 | Item | Value | Where verified |
 |---|---|---|
@@ -102,7 +102,7 @@ Verified 2026-08-29 unless noted.
 | Spring Kafka observation | `spring.kafka.template.observation-enabled`, `spring.kafka.listener.observation-enabled` | spring-boot-kafka 4.1.1 metadata |
 | otel-lgtm | `grafana/otel-lgtm:0.33.0` (Grafana 3000 anonymous Admin, OTLP 4317/4318, Tempo 3200 internal, collector config at `/otel-lgtm/otelcol-config.yaml`, dashboard providers under `/otel-lgtm/grafana/conf/provisioning/dashboards/`) | `docker run --entrypoint sh` inspection |
 
-## Phase 4+ items still to verify before first use
+## Still to verify before first use
 
 - Spring Data Redis 4 Jackson-3 JSON cache serializer class (cache currently uses JDK serialization)
 - (none pending)
