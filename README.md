@@ -101,6 +101,31 @@ sequenceDiagram
     Note over J: watchdog: stuck > timeout -> TIMED_OUT (JobTimedOut)
 ```
 
+## What each technology does here
+
+Every piece was chosen for a concrete job in this pipeline, not for the résumé. Where a simpler
+alternative would have done, the table says what the extra component buys.
+
+| Technology | Role in this project | What it buys over the simpler option |
+|---|---|---|
+| Java 21 + Spring Boot 4.1 | The three services: virtual threads for blocking JDBC/HTTP code, records for events and DTOs, `@Transactional` boundaries, Actuator probes and Prometheus metrics | One framework covers web, data, messaging, security and health; virtual threads give event-loop scalability without async APIs |
+| Spring Data JPA + Flyway + PostgreSQL 17 | One database and one role per service (`job_db`, `credit_db`, `llm_db`); `SELECT … FOR UPDATE` for credit reservations, `@Version` optimistic locking on jobs, immutable migrations | Row locks and transactions are the money-safety mechanism; a shared database would silently couple the services |
+| Apache Kafka 4.3 (KRaft) + Spring Kafka | Three topics, key = job id, so every event of a job stays ordered on one partition; consumer groups per service; `DefaultErrorHandler` + dead-letter topics for poison records | Durable, replayable, ordered delivery between services with no HTTP coupling; a REST call chain could not survive a consumer being down for a minute |
+| Transactional outbox (poller and Debezium CDC) | The event row is written in the same transaction as the state change; a poller (`FOR UPDATE SKIP LOCKED`) or Debezium reading the WAL moves it to Kafka | Closes the dual-write gap: no lost events on a crash between commit and publish. CDC removes the polling load and shows the same bytes reach Kafka either way |
+| Inbox (`processed_event`) + transition table | Every consumer claims the event id inside its own transaction; every job state change is checked against 7 states / 8 transitions | At-least-once delivery becomes effectively-once; out-of-order events walk the implied path instead of corrupting state |
+| Redis 8 | Cache-aside for hot reads (`GET /api/jobs/{id}`, balances) with commit-time eviction; a Lua token bucket for provider rate limits | Rate limits are per provider account, so they must be cluster-wide: one bucket for all worker replicas. Cache eviction after commit closed a real stale-read race |
+| Resilience4j | Retry (only retryable errors) outside a circuit breaker (10-call window, 50 %, open 30 s) around every provider call | Turns a 429 storm into three tries in one delivery instead of Kafka redeliveries, and stops calling a dead provider at all; verified with WireMock |
+| Spring AI 2.0 + MCP Java SDK | Provider adapters (`fake`, OpenAI, Gemini) behind one `LlmProvider` port; the job API exposed as MCP tools, a resource and a prompt over stateless Streamable HTTP | The same use cases serve REST and an LLM client without duplicated logic; stateless MCP needs no session affinity across replicas |
+| Spring Security (API key) | `X-API-Key` → `ROLE_USER` / `ROLE_ADMIN`, stateless, RFC 9457 error bodies | The minimum that makes the admin top-up and the actuator endpoints not public |
+| Testcontainers, Awaitility, WireMock, ArchUnit | Real Postgres/Kafka/Redis in every integration test (no H2), polling assertions instead of sleeps, a fake OpenAI upstream, architecture rules enforced at build time | The tests exercise the same locking, serialization and dialect as production; ArchUnit keeps `KafkaTemplate.send` out of everything but the outbox publisher |
+| Jib | Service images straight from Maven, no Dockerfile, no Docker daemon needed to push | Reproducible layered images, arm64 for kind and amd64 for GKE from one command |
+| Kubernetes (kind locally, GKE Autopilot in the cloud) | Deployments with startup/liveness/readiness probes, resource limits sized for the JVM, graceful shutdown; NodePort on kind, HPA and KEDA lag scaling on GKE | Restarts, rollouts and scaling become declarative; the readiness-vs-liveness split and pod-delete chaos exercises are only observable here |
+| Strimzi 1.2 + CloudNativePG 1.30 | Kafka (node pools, topics, Connect + Debezium connectors) and Postgres (cluster, roles, databases) as custom resources reconciled by operators | Stateful services on Kubernetes without hand-written StatefulSets; the same YAML runs on kind and, through the CDKTN main stack, on GKE |
+| Kustomize (kind) / CDK Terrain in Java (GKE) | Base manifests + a local overlay for kind; typed `common` and `main` stacks with Kubernetes constructs for GKE, applied with OpenTofu | Kustomize is enough for one laptop cluster; the cloud tier needs the GCP foundation (cluster, registry, WIF, optional Shared VPC) and the app tier in one dependency graph, in the project's language |
+| OpenTelemetry + `grafana/otel-lgtm` | OTLP traces and logs from all three services, Prometheus scrape, a saga dashboard; the `traceparent` rides through the outbox row and the Kafka header | One Tempo trace shows a whole saga across services and topics; without the outbox hop the trace would break at every publish |
+| Buck2 (task runner) + GitHub Actions + mise | `BUCK` files declare what each step reads and writes; `rdeps(owner(changed files))` picks the affected targets; a service's `:docker` target is tests then a branch-tagged push; workflows are a handful of `buck2` commands; `mise` pins every tool | CI does the minimum a change requires without duplicating the dependency graph in YAML; a contracts change rebuilds every service, a docs change builds nothing |
+| Workload Identity Federation + Artifact Registry digests | GitHub's OIDC token exchanged for a short-lived GCP credential; images pushed as `<service>:<branch>`, the main stack pins the digest behind the tag at apply time | No service-account keys in the repository or in secrets; deployments are digest-pinned even though the tag is mutable |
+
 ## Build, test, CI
 
 ```bash
