@@ -24,8 +24,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Thin inbound adapter: translates HTTP to use-case calls and nothing else. The Phase 5 MCP tools
- * will call the SAME application services — that symmetry is why no business logic may live here.
+ * Thin inbound adapter: translates HTTP to use-case calls and nothing else. The MCP tools
+ * call the SAME application services — that symmetry is why no business logic may live here.
  */
 // No class-level @Validated: Spring Framework 7 validates handler-method parameters natively
 // (HandlerMethodValidationException -> 400 problem+json). Adding @Validated would DISABLE that

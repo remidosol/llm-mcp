@@ -1,7 +1,7 @@
 package com.remidosol.llmmcp.contracts;
 
 /**
- * {@code aggregateType} values. Lower-case on purpose: the Debezium outbox router (Phase 3) builds
+ * {@code aggregateType} values. Lower-case on purpose: the Debezium outbox router builds
  * the topic name from this column as {@code ${routedByValue}.events.v1}.
  */
 public final class AggregateTypes {

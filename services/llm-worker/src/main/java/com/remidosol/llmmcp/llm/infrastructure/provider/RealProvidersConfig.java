@@ -23,7 +23,7 @@ import java.time.Duration;
  * Real providers exist only when their API key is configured (the fake provider is the
  * default). Spring AI's chat auto-configuration is disabled ({@code spring.ai.model.chat=none})
  * because with two model starters on the classpath it would demand both keys at startup; here the
- * models are built explicitly — with the SDK's own retries OFF, so Phase 5's Resilience4j policy
+ * models are built explicitly — with the SDK's own retries OFF, so the Resilience4j policy
  * is the only retry/breaker layer (ADR-0018).
  */
 @Configuration

@@ -5,7 +5,7 @@ import com.remidosol.llmmcp.credit.domain.CreditAccount;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Admin use case: add credits, opening the account on first use (Phase 5 puts an admin key on it). */
+/** Admin use case: add credits, opening the account on first use (admin API key required). */
 @Service
 public class TopUpService {
 

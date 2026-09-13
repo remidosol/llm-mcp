@@ -45,6 +45,6 @@ class HexagonalArchitectureTest {
     static final ArchRule kafka_sends_only_from_the_outbox_poller = noClasses()
             .that().doNotHaveSimpleName("OutboxPoller").and().doNotHaveSimpleName("KafkaErrorHandlingConfig")
             .should().dependOnClassesThat().haveSimpleName("KafkaTemplate")
-            .because("no KafkaTemplate.send outside the outbox publisher after Phase 3 (CLAUDE.md hard rule); "
+            .because("no KafkaTemplate.send outside the outbox publisher (CLAUDE.md hard rule); "
                     + "the DLT recoverer config is the single exception");
 }

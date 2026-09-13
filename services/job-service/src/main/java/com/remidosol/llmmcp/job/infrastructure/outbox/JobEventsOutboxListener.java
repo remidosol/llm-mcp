@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * Maps job domain events to contract envelopes and appends them to the outbox. A plain
  * {@code @EventListener} runs synchronously inside the publishing transaction — that is the whole
  * trick: if the job insert commits, the outbox row commits; if either fails, neither exists.
- * (Phase 2's {@code @TransactionalEventListener(AFTER_COMMIT)} publisher is gone: no dual write.)
+ * (An {@code @TransactionalEventListener(AFTER_COMMIT)} publisher would be the dual-write bug.)
  */
 @Component
 class JobEventsOutboxListener {

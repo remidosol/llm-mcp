@@ -11,7 +11,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * The hexagonal-lite boundaries (api / application / domain / infrastructure), enforced at build
  * time (ADR-0003). Duplicated per
  * service on purpose: services share nothing but {@code contracts}, so each carries its own copy
- * of these rules, including the Phase 3 "no KafkaTemplate.send outside the outbox publisher".
+ * of these rules, including "no KafkaTemplate.send outside the outbox publisher".
  */
 @AnalyzeClasses(packages = "com.remidosol.llmmcp.job", importOptions = ImportOption.DoNotIncludeTests.class)
 class HexagonalArchitectureTest {
@@ -56,6 +56,6 @@ class HexagonalArchitectureTest {
     static final ArchRule kafka_sends_only_from_the_outbox_poller = noClasses()
             .that().doNotHaveSimpleName("OutboxPoller").and().doNotHaveSimpleName("KafkaErrorHandlingConfig")
             .should().dependOnClassesThat().haveSimpleName("KafkaTemplate")
-            .because("no KafkaTemplate.send outside the outbox publisher after Phase 3 (CLAUDE.md hard rule); "
+            .because("no KafkaTemplate.send outside the outbox publisher (CLAUDE.md hard rule); "
                     + "the DLT recoverer config is the single exception");
 }

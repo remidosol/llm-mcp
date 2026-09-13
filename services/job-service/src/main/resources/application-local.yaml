@@ -15,7 +15,7 @@ spring:
 
 logging:
   level:
-    org.springframework.cache: TRACE   # Phase 1 DoD: cache hits must be visible in logs
+    org.springframework.cache: TRACE   # cache hits must be visible in logs
 
 app:
   security:

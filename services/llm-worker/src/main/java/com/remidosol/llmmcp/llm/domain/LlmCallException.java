@@ -3,7 +3,7 @@ package com.remidosol.llmmcp.llm.domain;
 /**
  * A failed provider call, classified: {@code retryable} (429, 5xx, timeouts — try again later)
  * or not (bad request, unknown model, injected [FAIL]). The classification drives the retry policy
- * (Phase 5) and the {@code LlmFailed.retryable} flag consumers see.
+ * and the {@code LlmFailed.retryable} flag consumers see.
  */
 public class LlmCallException extends RuntimeException {
 

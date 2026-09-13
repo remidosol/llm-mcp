@@ -17,7 +17,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * End-to-end HTTP behaviour of the Phase 1 API surface: happy paths return the job view, error
+ * End-to-end HTTP behaviour of the REST API surface: happy paths return the job view, error
  * paths return RFC 9457 problem+json. Runs against real Postgres/Redis via Testcontainers.
  */
 class JobApiIntegrationTest extends AbstractIntegrationTest {

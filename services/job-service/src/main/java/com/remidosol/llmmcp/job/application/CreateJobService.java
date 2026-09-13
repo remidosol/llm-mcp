@@ -11,7 +11,7 @@ import java.util.UUID;
 
 /**
  * The "submit a job" use case. It exists as the single transaction boundary for job creation:
- * in Phase 3 the outbox row (JobCreated) will be inserted in THIS SAME transaction — that
+ * the outbox row (JobCreated) is inserted in THIS SAME transaction — that
  * placement is the whole point of the transactional outbox, so the boundary lives here, not in
  * the controller.
  */
@@ -31,14 +31,14 @@ public class CreateJobService {
 
     @Transactional
     public JobView create(String userId, String prompt, String model) {
-        // Plain random UUID for now; time-ordered UUIDv7 arrives with the event envelope (Phase 2).
+        // Plain random UUID for the job id; the event envelope uses time-ordered UUIDv7.
         UUID id = UUID.randomUUID();
         int estimatedCredits = creditEstimator.estimate(prompt, model);
         Job job = Job.create(id, userId, prompt, model, estimatedCredits);
         jobRepository.save(job);
         // The domain event is published in-process; WHO turns it into a Kafka record is an
-        // infrastructure decision: Phase 2 sends after commit (deliberate dual write), Phase 3
-        // writes an outbox row inside this same transaction.
+        // infrastructure decision: the outbox listener writes a row inside this same transaction
+        // (sending after commit would be the dual-write bug).
         events.publishEvent(new JobCreatedEvent(id, userId, prompt, model, estimatedCredits));
         return JobView.from(job);
     }

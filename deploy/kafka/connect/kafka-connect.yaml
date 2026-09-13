@@ -1,4 +1,4 @@
-# Kafka Connect under Strimzi (Phase 6 stretch; the services stay on the polling publisher until
+# Kafka Connect under Strimzi (optional; the services stay on the polling publisher until
 # `make deploy-cdc` flips APP_OUTBOX_PUBLISHER=cdc). Secrets reach the connector configs through the
 # EnvVarConfigProvider: `${env:PG_PASSWORD}` in a KafkaConnector resolves inside the Connect JVM.
 apiVersion: kafka.strimzi.io/v1

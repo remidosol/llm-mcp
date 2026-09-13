@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 5 DoD probe: MCP Inspector CLI against the running job-service (local profile, /mcp open).
+# MCP probe: MCP Inspector CLI against the running job-service (local profile, /mcp open).
 # Usage: make run-all && scripts/mcp-check.sh   (needs node/npx; MCP_URL overrides the endpoint)
 set -euo pipefail
 URL=${MCP_URL:-http://localhost:8081/mcp}

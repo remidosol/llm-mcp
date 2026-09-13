@@ -3,7 +3,7 @@
 # KRaft combined-mode config is spelled out below.
 services:
   # No data volume on purpose: topics are recreated by kafka-init on every up, and losing local
-  # event data on compose-down is acceptable pre-Phase 4 (pgdata DOES persist — asymmetry is known).
+  # event data on compose-down is acceptable locally (pgdata DOES persist — asymmetry is known).
   kafka:
     image: apache/kafka:4.3.1
     ports:
@@ -30,7 +30,7 @@ services:
       start_period: 15s
     labels:
       # Boot 4.1 has no Kafka compose service connection (regression vs 3.x);
-      # spring.kafka.bootstrap-servers is set explicitly from Phase 2 on.
+      # spring.kafka.bootstrap-servers is set explicitly.
       org.springframework.boot.ignore: "true"
 
   kafka-init:
@@ -68,7 +68,7 @@ services:
 
   postgres:
     image: postgres:17.11
-    command: postgres -c wal_level=logical # Debezium-ready from day one (Phase 3)
+    command: postgres -c wal_level=logical # Debezium-ready (CDC outbox publisher)
     ports:
       - "5433:5432" # host 5433: many dev machines run their own Postgres on 5432
     environment:
@@ -92,7 +92,7 @@ services:
       - "6380:6379" # host 6380: dev machines often run their own redis-server on 6379
     # no ignore label: Boot's compose support auto-wires RedisConnectionDetails (mapped port included)
 
-  # Phase 3: Debezium Connect (CDC outbox publisher). Optional locally: `make compose-up-cdc`.
+  # Debezium Connect (CDC outbox publisher). Optional locally: `make compose-up-cdc`.
   debezium-connect:
     image: quay.io/debezium/connect:3.6.1.Final
     profiles: ["cdc"]
@@ -122,7 +122,7 @@ services:
     labels:
       org.springframework.boot.ignore: "true"
 
-  # Phase 7 (ADR-0024): OTel collector + Prometheus + Tempo + Loki + Grafana in one container.
+  # Observability: OTel collector + Prometheus + Tempo + Loki + Grafana in one container.
   # Start with `make compose-up-observability`, then run the services with OTEL_ENABLED=true.
   otel-lgtm:
     image: grafana/otel-lgtm:0.33.0

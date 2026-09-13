@@ -4,7 +4,7 @@ import com.remidosol.llmmcp.llm.domain.LlmResult;
 
 /**
  * Port between the use case and "how carefully do we call a provider": the implementation adds
- * rate limiting, retries and a circuit breaker (Phase 5) without the use case knowing.
+ * rate limiting, retries and a circuit breaker without the use case knowing.
  */
 public interface ProviderGateway {
 

@@ -1,4 +1,4 @@
-# kind cluster for Phase 6: one control-plane + one worker. Node image pinned by digest (kind v0.33.0
+# kind cluster: one control-plane + one worker. Node image pinned by digest (kind v0.33.0
 # release notes) — a tag alone can silently point at an image built for another kind release.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4

@@ -12,7 +12,7 @@
 
     <artifactId>job-service</artifactId>
     <name>job-service</name>
-    <description>Job aggregate, saga state, public REST API, MCP server (Phase 5), timeout watchdog (Phase 4)</description>
+    <description>Job aggregate, saga state, public REST API, MCP server, timeout watchdog</description>
 
     <dependencies>
         <dependency>
@@ -53,7 +53,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- Phase 7 (ADR-0024): Micrometer Tracing + OTel bridge + OTLP exporters (traces, logs) -->
+        <!-- Micrometer Tracing + OTel bridge + OTLP exporters (traces, logs) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-opentelemetry</artifactId>
@@ -70,7 +70,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-kafka</artifactId>
         </dependency>
-        <!-- Phase 5: MCP server (tools/resources/prompts over Streamable HTTP, stateless) — ADR-0017 -->
+        <!-- MCP server (tools/resources/prompts over Streamable HTTP, stateless) — ADR-0017 -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>

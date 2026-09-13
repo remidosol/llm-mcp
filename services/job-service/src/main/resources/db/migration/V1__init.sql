@@ -28,7 +28,7 @@ create table job_result (
 );
 
 -- Column names follow the Debezium outbox EventRouter defaults (id, aggregatetype,
--- aggregateid, type, payload) so the Phase 3 CDC connector needs minimal configuration.
+-- aggregateid, type, payload) so the CDC connector needs minimal configuration.
 create table outbox (
     id            uuid primary key, -- envelope eventId
     aggregatetype text        not null,

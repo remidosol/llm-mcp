@@ -39,10 +39,10 @@ compose-down:
 compose-reset: ## drop volumes: pgdata is wiped, topics are recreated
 	docker compose down -v && docker compose up -d --wait
 
-compose-up-cdc: ## Phase 3: infra + Debezium Connect (profile cdc)
+compose-up-cdc: ## infra + Debezium Connect (profile cdc)
 	docker compose --profile cdc up -d --wait
 
-debezium-register: ## Phase 3: create/update the outbox connectors (idempotent PUT)
+debezium-register: ## create/update the outbox connectors (idempotent PUT)
 	@for f in deploy/debezium/*-connector.json; do \
 	  name=$$(basename $$f .json); \
 	  echo "== $$name"; \
@@ -52,7 +52,7 @@ debezium-register: ## Phase 3: create/update the outbox connectors (idempotent P
 
 RUN_DIR := .run
 
-run-all: install-contracts ## Phase 4: all three services in the background (logs in .run/)
+run-all: install-contracts ## all three services in the background (logs in .run/)
 	@mkdir -p $(RUN_DIR)
 	@for s in job-service credit-service llm-worker; do \
 	  (set -a; [ -f .env ] && . ./.env; set +a; nohup $(MVN) -q -pl services/$$s spring-boot:run -Dspring-boot.run.profiles=$(PROFILE) > $(RUN_DIR)/$$s.log 2>&1 & echo $$! > $(RUN_DIR)/$$s.pid); \
@@ -66,18 +66,18 @@ stop-all: ## stop the services started by run-all
 mcp-tools: ## list MCP tools of the running job-service (MCP Inspector CLI)
 	npx -y @modelcontextprotocol/inspector --cli http://localhost:8081/mcp --transport http --method tools/list
 
-mcp-check: ## Phase 5 DoD: create -> poll -> read result -> prompt, all through the MCP Inspector CLI
+mcp-check: ## MCP check: create -> poll -> read result -> prompt, all through the MCP Inspector CLI
 	scripts/mcp-check.sh
 
 mcp-add: ## register job-service as an MCP server in Claude Code (user scope; .mcp.json covers project scope)
 	claude mcp add --transport http job-service http://localhost:8081/mcp
 
-smoke: ## Phase 4: happy path + [FAIL] path with the Kafka event trail (needs run-all)
+smoke: ## happy path + [FAIL] path with the Kafka event trail (needs run-all)
 	./scripts/smoke.sh
 
-e2e: ## Phase 4: black-box saga tests against the running services
+e2e: ## black-box saga tests against the running services
 	$(MVN) -Pe2e -pl e2e -am verify
-# ---------------------------------------------------------------- Phase 6: Kubernetes on kind
+# ---------------------------------------------------------------- Kubernetes on kind
 KIND_CLUSTER := llm-mcp
 STRIMZI_VERSION := 1.2.0
 CNPG_MANIFEST := https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.30/releases/cnpg-1.30.0.yaml
@@ -111,7 +111,7 @@ deploy-local: ## operators (Strimzi via Helm, CNPG via manifest) + Kafka + Postg
 	@for d in job-service credit-service llm-worker; do kubectl -n llm-mcp rollout status deployment/$$d --timeout=5m; done
 	@echo "job-service: http://localhost:30080 (NodePort) — make smoke-k8s"
 
-deploy-cdc: ## Phase 6 stretch: Debezium under Strimzi; services switch to the CDC publisher
+deploy-cdc: ## Debezium under Strimzi; services switch to the CDC publisher
 	kubectl apply -f deploy/kafka/connect/heartbeat-topics.yaml -f deploy/kafka/connect/kafka-connect.yaml
 	kubectl -n kafka wait kafkaconnect/debezium --for=condition=Ready --timeout=10m
 	kubectl apply -f deploy/kafka/connect/connectors.yaml
@@ -167,4 +167,3 @@ k8s-status: ## pods across the namespaces + Kafka/Postgres readiness
 
 k8s-reset: ## drop the app tier only (operators, Kafka and Postgres stay)
 	kubectl delete -k deploy/k8s/overlays/local --ignore-not-found
-# deploy-gke         (Phase 7)

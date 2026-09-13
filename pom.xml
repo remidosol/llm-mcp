@@ -25,7 +25,7 @@
         <module>services/job-service</module>
         <module>services/credit-service</module>
         <module>services/llm-worker</module>
-        <!-- e2e module arrives in Phase 4, activated only via -Pe2e (profile below) -->
+        <!-- e2e module is activated only via -Pe2e (profile below) -->
     </modules>
 
     <properties>
@@ -61,13 +61,13 @@
                 <artifactId>archunit-junit5</artifactId>
                 <version>${archunit.version}</version>
             </dependency>
-            <!-- Phase 5: the ONLY Resilience4j module compatible with Boot 4 -->
+            <!-- the ONLY Resilience4j module compatible with Boot 4 -->
             <dependency>
                 <groupId>io.github.resilience4j</groupId>
                 <artifactId>resilience4j-spring-boot4</artifactId>
                 <version>${resilience4j.version}</version>
             </dependency>
-            <!-- Phase 4/5: standalone shades Jackson 2 + Jetty, coexists with Boot 4's Jackson 3 -->
+            <!-- standalone shades Jackson 2 + Jetty, coexists with Boot 4's Jackson 3 -->
             <dependency>
                 <groupId>org.wiremock</groupId>
                 <artifactId>wiremock-standalone</artifactId>

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Thin inbound adapter. The top-up endpoint is admin-only from Phase 5 on (API key
+ * Thin inbound adapter. The top-up endpoint is admin-only (API key
  * filter); until then it is open in the local profile by design.
  */
 @RestController

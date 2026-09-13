@@ -12,7 +12,7 @@
 
     <artifactId>llm-worker</artifactId>
     <name>llm-worker</name>
-    <description>LLM execution: provider adapters (Strategy), resilience, rate limiting (Phase 4+). No public API - actuator only.</description>
+    <description>LLM execution: provider adapters (Strategy), resilience, rate limiting. No public API - actuator only.</description>
 
     <dependencies>
         <dependency>
@@ -28,7 +28,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- Phase 7 (ADR-0024): Micrometer Tracing + OTel bridge + OTLP exporters (traces, logs) -->
+        <!-- Micrometer Tracing + OTel bridge + OTLP exporters (traces, logs) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-opentelemetry</artifactId>
@@ -71,7 +71,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
-        <!-- Phase 5: retry + circuit breaker per provider (ADR-0018); the only Boot-4-compatible module -->
+        <!-- retry + circuit breaker per provider (ADR-0018); the only Boot-4-compatible module -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-spring-boot4</artifactId>
