@@ -7,7 +7,6 @@ import com.remidosol.llmmcp.job.application.JobResultView;
 import com.remidosol.llmmcp.job.application.JobView;
 import com.remidosol.llmmcp.job.domain.JobStatus;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.springframework.ai.mcp.annotation.McpArg;
 import org.springframework.ai.mcp.annotation.McpComplete;
@@ -54,10 +53,9 @@ public class JobMcpServer {
     @McpTool(name = "create_job", description = "Submit a prompt as an asynchronous LLM job for a user. Returns the "
             + "accepted job (status CREATED). Poll get_job until COMPLETED, then read job://{jobId}/result.")
     public JobView createJob(
-            @McpToolParam(description = "Owner of the job = credit account id, e.g. u1", required = true) String userId,
-            @McpToolParam(description = "The prompt to run", required = true) String prompt,
-            @McpToolParam(description = "provider:model-id, e.g. fake:demo, openai:gpt-4o-mini, gemini:gemini-2.5-flash",
-                    required = true) String model) {
+            @McpToolParam(description = "Owner of the job = credit account id, e.g. u1") String userId,
+            @McpToolParam(description = "The prompt to run") String prompt,
+            @McpToolParam(description = "provider:model-id, e.g. fake:demo, openai:gpt-4o-mini, gemini:gemini-2.5-flash") String model) {
         CreateJobRequest request = new CreateJobRequest(prompt, model);
         var violations = validator.validate(request); // the REST path validates via @Valid; MCP calls do it explicitly
         if (!violations.isEmpty()) {
@@ -74,13 +72,13 @@ public class JobMcpServer {
 
     @McpTool(name = "get_job", description = "Current state of a job: status (CREATED, CREDIT_RESERVED, PROCESSING, "
             + "COMPLETED, FAILED, REJECTED, TIMED_OUT), estimated/actual credits and failure reason.")
-    public JobView getJob(@McpToolParam(description = "Job id (UUID)", required = true) String jobId) {
+    public JobView getJob(@McpToolParam(description = "Job id (UUID)") String jobId) {
         return jobQueryService.getJob(parseJobId(jobId));
     }
 
     @McpTool(name = "list_jobs", description = "Recent jobs of a user, newest first, optionally filtered by status.")
     public List<JobView> listJobs(
-            @McpToolParam(description = "Credit account id, e.g. u1", required = true) String userId,
+            @McpToolParam(description = "Credit account id, e.g. u1") String userId,
             @McpToolParam(description = "Optional status filter, e.g. COMPLETED", required = false) String status,
             @McpToolParam(description = "Max rows, 1-100 (default 20)", required = false) Integer limit) {
         JobStatus filter = status == null || status.isBlank() ? null : JobStatus.valueOf(status.toUpperCase(Locale.ROOT));
@@ -94,17 +92,19 @@ public class JobMcpServer {
     public McpSchema.ReadResourceResult jobResult(String jobId) {
         JobResultView result = jobQueryService.getResult(parseJobId(jobId));
         String uri = RESULT_URI_TEMPLATE.replace("{jobId}", jobId);
-        return new McpSchema.ReadResourceResult(List.of(
-                new McpSchema.TextResourceContents(uri, "application/json", json.writeValueAsString(result))));
+        McpSchema.TextResourceContents contents = McpSchema.TextResourceContents.builder(uri, json.writeValueAsString(result))
+                .mimeType("application/json")
+                .build();
+        return McpSchema.ReadResourceResult.builder(List.of(contents)).build();
     }
 
     @McpPrompt(name = "compare_models", description = "Run one prompt on two models through this server and compare "
             + "the answers side by side.")
     public McpSchema.GetPromptResult compareModels(
-            @McpArg(name = "prompt", description = "The prompt to run on both models", required = true) String prompt,
-            @McpArg(name = "userId", description = "Credit account to charge (default u1)", required = false) String userId,
-            @McpArg(name = "modelA", description = "First provider:model (default fake:demo)", required = false) String modelA,
-            @McpArg(name = "modelB", description = "Second provider:model (default fake:echo)", required = false) String modelB) {
+            @McpArg(name = "prompt", description = "The prompt to run on both models") String prompt,
+            @McpArg(name = "userId", description = "Credit account to charge (default u1)") String userId,
+            @McpArg(name = "modelA", description = "First provider:model (default fake:demo)") String modelA,
+            @McpArg(name = "modelB", description = "Second provider:model (default fake:echo)") String modelB) {
         String user = userId == null || userId.isBlank() ? "u1" : userId;
         String a = modelA == null || modelA.isBlank() ? "fake:demo" : modelA;
         String b = modelB == null || modelB.isBlank() ? "fake:echo" : modelB;
@@ -117,8 +117,11 @@ public class JobMcpServer {
                 4. Present a side-by-side comparison: output quality, completion tokens and actual credits charged.
                    If a job did not complete, report its status and failureReason instead.
                 """.formatted(user, a, b, prompt);
-        return new McpSchema.GetPromptResult("Compare two models on one prompt",
-                List.of(new McpSchema.PromptMessage(McpSchema.Role.USER, new McpSchema.TextContent(text))));
+        McpSchema.PromptMessage message = McpSchema.PromptMessage.builder(McpSchema.Role.USER,
+                McpSchema.TextContent.builder(text).build()).build();
+        return McpSchema.GetPromptResult.builder(List.of(message))
+                .description("Compare two models on one prompt")
+                .build();
     }
 
     /** Argument completion for the prompt: known provider:model ids filtered by what the user typed so far. */
