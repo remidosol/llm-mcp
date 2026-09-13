@@ -194,13 +194,13 @@ A typical command chain:
 
 ```mermaid
 flowchart LR
-    Request[HTTP / MCP] --> Security[X-API-Key filter]
-    Security --> Validation[@Valid DTO / Validator]
-    Validation --> UseCase[application service @Transactional]
-    UseCase --> Aggregate[domain: Job.transitionTo / CreditAccount.reserve]
-    UseCase --> DomainEvent[ApplicationEventPublisher]
-    DomainEvent --> Outbox[OutboxWriter: same transaction, with traceparent]
-    UseCase --> Response[202 / JobView]
+    Request["HTTP / MCP"] --> Security["X-API-Key filter"]
+    Security --> Validation["@Valid DTO / Validator"]
+    Validation --> UseCase["application service, @Transactional"]
+    UseCase --> Aggregate["domain: Job.transitionTo / CreditAccount.reserve"]
+    UseCase --> DomainEvent["ApplicationEventPublisher"]
+    DomainEvent --> Outbox["OutboxWriter: same transaction, with traceparent"]
+    UseCase --> Response["202 / JobView"]
 ```
 
 ### 4.3 Technology
