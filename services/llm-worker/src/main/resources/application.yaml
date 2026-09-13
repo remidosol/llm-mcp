@@ -9,6 +9,10 @@ spring:
     hibernate:
       ddl-auto: validate
   kafka:
+    template:
+      observation-enabled: true    # producer span + traceparent header on every record
+    listener:
+      observation-enabled: true    # consumer span joins the trace found in the record headers
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -33,6 +37,29 @@ server:
   shutdown: graceful
 
 management:
+  # OpenTelemetry (ADR-0024): traces + logs pushed over OTLP/HTTP to the collector (otel-lgtm), metrics scraped
+  # from /actuator/prometheus. Off unless OTEL_ENABLED=true, so a laptop without the collector logs no export errors.
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      enabled: ${OTEL_ENABLED:false}
+  logging:
+    export:
+      otlp:
+        enabled: ${OTEL_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
+      deployment.environment: ${SPRING_PROFILES_ACTIVE:local}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs
   endpoints:
     web:
       exposure:
@@ -49,7 +76,7 @@ management:
 
 logging:
   pattern:
-    correlation: "[${spring.application.name},%X{jobId:-}] "
+    correlation: "[${spring.application.name},%X{traceId:-},%X{spanId:-},%X{jobId:-}] "
 
 app:
   outbox:

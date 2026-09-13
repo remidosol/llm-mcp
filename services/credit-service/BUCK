@@ -1,0 +1,5 @@
+spring_service(
+    name = "credit-service",
+    port = 8082,
+    package = "services/credit-service",
+)

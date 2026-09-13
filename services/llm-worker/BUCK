@@ -1,0 +1,5 @@
+spring_service(
+    name = "llm-worker",
+    port = 8083,
+    package = "services/llm-worker",
+)

@@ -38,7 +38,9 @@ class OutboxIntegrationTest extends AbstractIntegrationTest {
 
         kafka.send(jobCreatedRecord(trigger));
 
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        // ignoreExceptions: the row does not exist until the listener commits, and an empty result is an
+        // exception (EmptyResultDataAccessException), not an AssertionError, which Awaitility would otherwise rethrow
+        await().atMost(Duration.ofSeconds(30)).ignoreExceptions().untilAsserted(() -> {
             Map<String, Object> row = jdbc.sql(
                             "select type, payload::text as payload, published_at from outbox where aggregateid = :id")
                     .param("id", jobId.toString()).query().singleRow();

@@ -42,31 +42,33 @@ public class OutboxPoller {
     private final JdbcClient jdbc;
     private final KafkaTemplate<String, String> kafka;
     private final OutboxProperties properties;
+    private final TraceContextCarrier trace;
     private final Timer publishLatency;
     private final AtomicLong pending = new AtomicLong();
 
     public OutboxPoller(JdbcClient jdbc, KafkaTemplate<String, String> kafka, OutboxProperties properties,
-                        MeterRegistry registry) {
+                        TraceContextCarrier trace, MeterRegistry registry) {
         this.jdbc = jdbc;
         this.kafka = kafka;
         this.properties = properties;
+        this.trace = trace;
         this.publishLatency = registry.timer("outbox.publish_latency");
         registry.gauge("outbox.pending", pending);
     }
 
     record PendingRow(UUID id, String aggregateType, String aggregateId, String type, String payload,
-                      Instant createdAt) {
+                      Instant createdAt, String traceparent) {
     }
 
     @Scheduled(fixedDelayString = "${app.outbox.poll-interval:500ms}")
     @Transactional
     public void publishBatch() {
-        List<PendingRow> rows = jdbc.sql("select id, aggregatetype, aggregateid, type, payload, created_at from outbox "
+        List<PendingRow> rows = jdbc.sql("select id, aggregatetype, aggregateid, type, payload, created_at, traceparent from outbox "
                         + "where published_at is null order by id limit :batch for update skip locked")
                 .param("batch", properties.batchSize())
                 .query((rs, i) -> new PendingRow(rs.getObject("id", UUID.class), rs.getString("aggregatetype"),
                         rs.getString("aggregateid"), rs.getString("type"), rs.getString("payload"),
-                        rs.getTimestamp("created_at").toInstant()))
+                        rs.getTimestamp("created_at").toInstant(), rs.getString("traceparent")))
                 .list();
         for (PendingRow row : rows) {
             publish(row);
@@ -81,7 +83,10 @@ public class OutboxPoller {
                 .add(EventHeaders.EVENT_TYPE, row.type().getBytes(StandardCharsets.UTF_8))
                 .add(EventHeaders.EVENT_ID, row.id().toString().getBytes(StandardCharsets.UTF_8));
         try {
-            kafka.send(record).get(properties.sendTimeout().toMillis(), TimeUnit.MILLISECONDS);
+            // continue the writer's trace: the KafkaTemplate observation becomes its child and puts a
+            // matching traceparent header on the record, so the consumer's span joins the same trace
+            trace.inContextOf(row.traceparent(), "outbox publish",
+                    () -> kafka.send(record).get(properties.sendTimeout().toMillis(), TimeUnit.MILLISECONDS));
         } catch (Exception e) {
             // rollback: nothing is marked published, the batch is retried on the next tick
             throw new IllegalStateException("outbox publish failed for " + row.type() + " " + row.id(), e);

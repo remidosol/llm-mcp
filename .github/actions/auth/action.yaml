@@ -1,0 +1,23 @@
+name: auth
+description: Google Cloud via Workload Identity Federation (no keys) + Artifact Registry credentials for Jib and Terraform
+inputs:
+  workload-identity-provider:
+    description: projects/N/locations/global/workloadIdentityPools/github/providers/github-oidc (common stack output)
+    required: true
+  service-account:
+    description: github-deployer@PROJECT.iam.gserviceaccount.com (common stack output)
+    required: true
+  region:
+    description: Artifact Registry region
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: google-github-actions/auth@v3
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+    - uses: google-github-actions/setup-gcloud@v3
+    - name: Artifact Registry credentials (Jib reads the gcloud credential helper from ~/.docker/config.json)
+      shell: bash
+      run: gcloud auth configure-docker "${{ inputs.region }}-docker.pkg.dev" --quiet

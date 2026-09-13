@@ -1,0 +1,5 @@
+spring_service(
+    name = "job-service",
+    port = 8081,
+    package = "services/job-service",
+)

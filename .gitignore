@@ -47,3 +47,9 @@ graphify-out/
 ### Learning docs stay local (user decision, 2026-09-13): only runbook + verified-versions are committed ###
 docs/PRD.md
 docs/notes/
+
+### local-only material, never committed ###
+references/
+
+### Buck2 ###
+buck-out/

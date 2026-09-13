@@ -155,6 +155,58 @@ kubectl -n llm-mcp patch deploy/job-service --type=json -p='[{"op":"replace","pa
 kubectl -n llm-mcp rollout undo deploy/job-service
 ```
 
+## Buck2 (task runner) and target determination
+
+```bash
+mise install                                    # Temurin 21, Node, buck2, buildifier, git-cliff, opentofu (mise.toml)
+buck2 targets //...                             # the graph
+buck2 build //contracts:jar                     # Maven inside a sandbox copy of contracts/ + root pom + wrapper
+buck2 build //services/job-service:verify       # tests (Testcontainers); output = surefire reports
+buck2 build //services/job-service:image        # Jib -> local daemon as llm-mcp/job-service:local
+buck2 build //services/job-service:docker -c llmmcp.registry=europe-west1-docker.pkg.dev/PROJECT/llmmcp -c llmmcp.tag=abc1234   # push (needs gcloud auth configure-docker)
+buck2 build //infra:synth                       # cdktf.out for both stacks (no credentials)
+buck2 run //infra:plan@main                     # OpenTofu plan (needs the state bucket) — apply only with an explicit OK
+scripts/changed-targets.sh <base-sha> <head-sha> # what a diff affects: {"verify":[…],"docker":[…],"infra":bool}
+buck2 uquery "rdeps(//..., owner('contracts/src/main/java/com/remidosol/llmmcp/contracts/EventEnvelope.java'))"
+```
+Notes: rules live in `tools/buck2/rules/` (`tools/buck2` is the prelude cell; `command`, `files`, `group` + macros); `buck2 uquery --console none` prints nothing — use `--console simple`; changing any BUCK/.bzl file
+means "rebuild everything" for CI; `buck-out/` and `target/` are ignored by the graph.
+
+## Observability (Phase 7)
+
+```bash
+# kind
+make deploy-observability     # otel-lgtm in ns observability (services already point at it via ConfigMap)
+make grafana                  # http://localhost:3000 — Dashboards: "llm-mcp — saga, outbox, LLM, resilience"; Explore: Tempo / Loki
+# compose
+make compose-up-observability && OTEL_ENABLED=true make run-all
+# find one job's trace (Tempo search via Grafana's datasource proxy)
+curl -s 'localhost:3000/api/datasources/proxy/uid/tempo/api/search?tags=service.name%3Djob-service&limit=5' | jq '.traces[] | {traceID, rootServiceName, durationMs}'
+# every log line carries [service,traceId,spanId,jobId] — grep a jobId in Loki, click the trace_id to jump to Tempo
+```
+
+## GCP / GKE (Phase 7 — NOT executed; costs money, needs an explicit OK)
+
+```bash
+# 0. one-time, by hand (a backend cannot create its own bucket)
+gcloud auth login && gcloud config set project $GCP_PROJECT_ID
+gsutil mb -l europe-west1 gs://$GCP_PROJECT_ID-llm-mcp-tfstate && gsutil versioning set on gs://$GCP_PROJECT_ID-llm-mcp-tfstate
+gcloud billing budgets create --billing-account=… --display-name=llm-mcp --budget-amount=20USD   # PRD cost control
+# 1. infra (CDKTN, Java): synth is free, deploy is not
+make infra-synth                                            # renders infra/cdktf.out/stacks/{common,main}/cdk.tf.json
+cd infra && export GCP_PROJECT_ID=… GCP_REGION=europe-west1 GITHUB_REPOSITORY=remidosol/llm-mcp
+npx -y cdktn-cli@0.24.0 deploy common                        # <- OK required: APIs, registry, GKE Autopilot, deployer SA + WIF
+# outputs -> GitHub: secrets GCP_PROJECT_ID, GCP_WIF_PROVIDER (workload_identity_provider), GCP_DEPLOYER_SA (deployer_service_account),
+#            APP_API_KEYS, APP_ADMIN_API_KEYS, POSTGRES_PASSWORD; vars GCP_REGION; environment "gke" with required reviewers
+# 2. main stack once, from the laptop (operators + Kafka/Postgres CRs + secrets + services + otel-lgtm + KEDA):
+TF_VAR_app_api_keys=… TF_VAR_app_admin_api_keys=… TF_VAR_postgres_password=… npx -y cdktn-cli@0.24.0 deploy main
+#    kubernetes_manifest needs the CRDs at plan time -> on a fresh cluster run it twice (or --target the helm releases first)
+# 3. services: push to main -> push.yaml: detect -> verify affected -> buck2 build //services/<s>:docker (Jib -> Artifact Registry :sha)
+#    -> approval on "gke" -> buck2 run //infra:apply@main with TF_VAR_<service>_tag (wait_for_rollout fails the apply on a bad image)
+# 4. smoke against GKE: kubectl port-forward as in smoke-k8s; MCP via port-forward 8081
+# 5. tear down when not demoing: npx -y cdktn-cli@0.24.0 destroy main && npx -y cdktn-cli@0.24.0 destroy common
+```
+
 ## Inspect
 
 ```bash
@@ -179,6 +231,8 @@ Flyway re-runs migrations on next service start; `db/local/V900` reseeds demo da
 - Kafka CR not Ready: `kubectl -n kafka get kafka llm-mcp -o jsonpath='{.status.conditions}'`; the node pool pod `llm-mcp-dual-role-0` logs.
 - CNPG `Database` `applied: false`: the owner role does not exist yet — roles are reconciled from `managed.roles` first; check `kubectl -n db get cluster pg -o jsonpath='{.status.managedRolesStatus}'`.
 - Secrets missing after `kind-down`/`kind-up`: rerun `scripts/k8s-secrets.sh` (they live only in the cluster).
+- `Validate failed: Migrations have failed validation` after pulling a new migration: an old local DB still records the pre-Phase-7 `V900` seed. Fix: `delete from flyway_schema_history where version='900'` in job_db/credit_db (kind: `kubectl -n db exec pg-1 -c postgres -- psql -U postgres -d job_db -c "..."`) or `make compose-reset` for compose.
+- Changing the outbox schema or the EventRouter placement while in CDC mode: apply the migration first, let the connector drain the pre-migration WAL records with the OLD placement (task must be RUNNING and caught up), THEN change `table.fields.additional.placement` — otherwise the task fails with `<field> is not a valid field name` and stays FAILED (`kubectl -n kafka annotate kafkaconnector <name> strimzi.io/restart-task=0` after fixing).
 - CDC mode, connectors RUNNING but jobs stuck in CREATED: `kubectl -n kafka logs debezium-connect-0 | grep UNKNOWN_TOPIC` — the `__debezium-heartbeat.*` topics must exist (`deploy/kafka/connect/heartbeat-topics.yaml`); auto-creation is off on purpose.
 
 ## Troubleshooting

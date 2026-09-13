@@ -11,7 +11,7 @@ spring:
     username: ${POSTGRES_USER:llm}
     password: ${POSTGRES_PASSWORD:llm-local}
   flyway:
-    locations: classpath:db/migration,classpath:db/local   # V900 seed only in local
+    locations: classpath:db/migration,classpath:db/local   # repeatable R__ seed (runs after every versioned migration) only in local
 
 logging:
   level:

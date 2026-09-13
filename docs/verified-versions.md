@@ -74,6 +74,8 @@ Verified 2026-08-29 unless noted.
 | MCP Java SDK | 2.0.0 (`io.modelcontextprotocol.sdk:mcp`, `mcp-json-jackson3`) pulled by `spring-ai-starter-mcp-server-webmvc:2.0.1` | dependency tree |
 | MCP stateless endpoint property | `spring.ai.mcp.server.protocol=STATELESS` reads `spring.ai.mcp.server.streamable-http.mcp-endpoint` (default `/mcp`); no `stateless.*` prefix exists | `McpServerStatelessWebMvcAutoConfiguration` bytecode (javap) |
 | MCP annotation return types | `@McpComplete` → `CompleteResult`/`CompleteCompletion`/`List<String>`/`String`; `@McpResource` → `ReadResourceResult`/`List<ResourceContents>`/`ResourceContents`/`String`; `@McpPrompt` → `GetPromptResult`/`List<PromptMessage>`/`PromptMessage`/`String` | `Sync*MethodCallback.validateReturnType` bytecode |
+| CDKTN providers (Phase 7 restructure) | `io.cdktn:cdktn-provider-kubernetes:17.0.0` (packages `io.cdktn.providers.kubernetes.<resource>`; union-typed lists come back as `Object`), `io.cdktn:cdktn-provider-helm:15.1.0`, `org.yaml:snakeyaml:2.7`; Helm charts: `cloudnative-pg` 0.29.0 (app 1.30.0, repo https://cloudnative-pg.github.io/charts), `keda` 2.20.2 (repo https://kedacore.github.io/charts), Strimzi OCI 1.2.0; jsii forbids subclass methods named like resource properties (`metadata()`) | Maven Central listing, `helm show chart --repo`, synth |
+| Buck2 / CI tooling | buck2 (local 2026-08-07 build; mise `buck2 = "latest"`), `jdx/mise-action@v4` (4.3.0), `actions/cache@v6`, `thollander/actions-comment-pull-request@v3` (3.0.1); `buck2 uquery` `owner()`/`rdeps()` verified locally; `supertd` has no published release for this fork | local runs, `gh api releases/latest` |
 | WireMock | `org.wiremock:wiremock-standalone:3.13.1`; API package still `com.github.tomakehurst.wiremock` | build |
 | Structured logging | `logging.structured.format.console=ecs` (Boot ≥ 3.4) | https://docs.spring.io/spring-boot/reference/features/logging.html#features.logging.structured |
 | MCP Inspector CLI | `npx @modelcontextprotocol/inspector --cli <url> --transport http --method tools/list` | https://github.com/modelcontextprotocol/inspector#cli-mode |
@@ -88,7 +90,17 @@ Verified 2026-08-29 unless noted.
 | Jib | 3.5.2, `com.google.cloud.tools:jib-maven-plugin`; goals `jib:dockerBuild`/`jib:build`; keys `from.image`, `from.platforms`, `to.image`, `to.tags`, `container.ports/user/creationTime`; default platform is amd64 → set arm64 explicitly on Apple Silicon | jib-maven-plugin README |
 | Debezium plugin | `debezium-connector-postgres-3.6.1.Final-plugin.tar.gz` on Maven Central (HTTP 200) | curl -I |
 
+## Phase 7 verifications (2026-09-13)
+
+| Item | Value | Where verified |
+|---|---|---|
+| CDKTN | CLI `cdktn-cli@0.24.0` (npm), Java `io.cdktn:cdktn:0.24.0`, `io.cdktn:cdktn-provider-google:20.3.1` (packages `io.cdktn.providers.google.<resource>`), `software.constructs:constructs:10.7.2`; config file must be named `cdktf.json` (0.24 CLI: "no cdktf.json found" for cdktn.json); backend class `io.cdktn.cdktn.GcsBackend`; output dir `cdktf.out/` | Maven Central listing, `npx cdktn-cli synth` locally |
+| GitHub Actions | `actions/checkout@v7` (7.0.1), `actions/setup-java@v6` (6.0.1), `actions/upload-artifact@v7`, `actions/setup-node@v7`, `google-github-actions/auth@v3`, `google-github-actions/setup-gcloud@v3`, `google-github-actions/get-gke-credentials@v3`, `imjasonh/setup-crane@v0.7`, `azure/setup-helm@v5` | `gh api repos/<r>/releases/latest` |
+| Boot 4 OpenTelemetry | starter `spring-boot-starter-opentelemetry`; keys `management.opentelemetry.tracing.export.otlp.endpoint`, `management.opentelemetry.logging.export.otlp.endpoint`, `management.tracing.sampling.probability` (default 0.1), `management.tracing.export.enabled`, `management.logging.export.otlp.enabled`, `management.opentelemetry.resource-attributes.*`; no OTLP metrics auto-configuration module in the 4.1.1 BOM (metrics stay Prometheus/scrape) | `spring-configuration-metadata.json` inside the 4.1.1 jars |
+| Spring Kafka observation | `spring.kafka.template.observation-enabled`, `spring.kafka.listener.observation-enabled` | spring-boot-kafka 4.1.1 metadata |
+| otel-lgtm | `grafana/otel-lgtm:0.33.0` (Grafana 3000 anonymous Admin, OTLP 4317/4318, Tempo 3200 internal, collector config at `/otel-lgtm/otelcol-config.yaml`, dashboard providers under `/otel-lgtm/grafana/conf/provisioning/dashboards/`) | `docker run --entrypoint sh` inspection |
+
 ## Phase 4+ items still to verify before first use
 
 - Spring Data Redis 4 Jackson-3 JSON cache serializer class (cache currently uses JDK serialization)
-- CDKTN setup (Phase 7), `grafana/otel-lgtm` OTLP property keys for Boot 4 (Phase 7)
+- (none pending)

@@ -1,0 +1,18 @@
+# the only shared module: everything under services/ depends on this jar
+
+maven_module(
+    name = "jar",
+    package = "contracts",
+    sources = glob(["src/**", "pom.xml"]),
+    dependencies = ["//:parent"],
+    outputs = ["target/contracts-0.0.1-SNAPSHOT.jar"],
+    visibility = ["PUBLIC"],
+)
+
+command(
+    name = "verify",
+    command = ["../mvnw", "-B", "-f", "pom.xml", "verify"],
+    sources = glob(["src/**", "pom.xml"]) + ["//:maven"],
+    dependencies = ["//:parent"],
+    outputs = ["target/surefire-reports"],
+)

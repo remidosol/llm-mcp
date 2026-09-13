@@ -73,4 +73,22 @@ databases), Redis, and the three services built with Jib and deployed with Kusto
 (`deploy/k8s/base` + `overlays/local|gke`). Secrets are generated from `.env` by
 `scripts/k8s-secrets.sh`; nothing sensitive is committed. Details in [docs/runbook.md](docs/runbook.md).
 
+## CI/CD and cloud (GitHub Actions, GKE Autopilot)
+
+The build graph lives in `BUCK` files (Buck2 as a task runner, ADR-0027): `push.yaml` computes which
+targets a push affects (`rdeps(//..., owner(<changed files>))`), verifies them, pushes only the
+affected service images to Artifact Registry with the commit sha (Jib, no Docker), and after approval
+on the `gke` environment applies the CDKTN stacks over Workload Identity Federation (no keys).
+`pull_request.yaml` verifies and synthesizes; `mise.toml` pins the tools. Infrastructure is CDK Terrain Java code in [`infra/`](infra/README.md):
+a `common` stack (Autopilot cluster, registry, WIF, optional Cloud SQL) and a `main` stack (operators,
+Kafka/Postgres CRs, the services, autoscaling, observability) built from typed Kubernetes constructs —
+`make infra-synth` renders both, deploying is a manual, paid step.
+
+## Observability
+
+`spring-boot-starter-opentelemetry` pushes traces and logs over OTLP to `grafana/otel-lgtm`
+(compose profile `observability`, or `make deploy-observability` on kind); metrics are scraped
+from `/actuator/prometheus`. The trace context rides through the outbox (`traceparent` column →
+Kafka header), so one Tempo trace shows the whole saga across the three services.
+
 Architecture diagram and the full demo script arrive with Phase 8.

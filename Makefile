@@ -4,7 +4,7 @@ export JAVA_HOME
 MVN := ./mvnw -B
 PROFILE := local
 
-.PHONY: build test verify install-contracts run-job run-credit run-llm run-all stop-all smoke e2e compose-up compose-down compose-reset compose-up-cdc debezium-register images kind-up kind-down kind-load deploy-local deploy-cdc smoke-k8s kafka-ui pg-forward k8s-status k8s-reset
+.PHONY: build test verify install-contracts run-job run-credit run-llm run-all stop-all smoke e2e compose-up compose-down compose-reset compose-up-cdc debezium-register images kind-up kind-down kind-load deploy-local deploy-cdc smoke-k8s kafka-ui pg-forward deploy-observability grafana compose-up-observability infra-synth buck-targets buck-verify buck-images changed k8s-status k8s-reset
 
 build: ## compile + package, skip tests
 	$(MVN) -DskipTests package
@@ -134,6 +134,32 @@ pg-forward: ## Postgres on localhost:5433 for pgAdmin/psql (roles job/credit/llm
 	@# kubectl port-forward exits as soon as ONE forwarded connection is reset by the server (e.g. a failed login);
 	@# the loop restarts it so a GUI client with several connections keeps working. Ctrl-C to stop.
 	@while true; do kubectl -n db port-forward svc/pg-rw 5433:5432; sleep 1; done
+
+deploy-observability: ## otel-lgtm (collector + Prometheus + Tempo + Loki + Grafana) in ns observability
+	@# the node pulls the image itself: `kind load` chokes on this multi-arch image ("content digest not found")
+	kubectl apply -f deploy/observability/otel-lgtm.yaml
+	kubectl -n observability rollout status deployment/otel-lgtm --timeout=10m
+
+grafana: ## Grafana at http://localhost:3000 (dashboards: llm-mcp saga; Explore: Tempo traces, Loki logs)
+	kubectl -n observability port-forward svc/otel-lgtm 3000:3000
+
+compose-up-observability: ## compose infra + otel-lgtm (profile observability); run services with OTEL_ENABLED=true
+	docker compose --profile observability up -d --wait
+
+buck-targets: ## Buck2: the target graph (BUCK files = what CI selects from)
+	buck2 targets //...
+
+buck-verify: ## Buck2: every :verify target (sandboxed Maven builds, Testcontainers)
+	buck2 build //:verify
+
+buck-images: ## Buck2: the three service images into the local daemon (Jib)
+	buck2 build //services/job-service:image //services/credit-service:image //services/llm-worker:image
+
+changed: ## Buck2 target determination for the uncommitted tree: make changed BASE=<sha>
+	scripts/changed-targets.sh $(or $(BASE),HEAD)
+
+infra-synth: ## CDKTN: render the common + main stacks to Terraform JSON (no credentials, no deploy)
+	cd infra && npx -y cdktn-cli@0.24.0 synth && ls cdktf.out/stacks
 
 k8s-status: ## pods across the namespaces + Kafka/Postgres readiness
 	kubectl get pods -n kafka; kubectl get pods -n db; kubectl get pods -n llm-mcp -o wide

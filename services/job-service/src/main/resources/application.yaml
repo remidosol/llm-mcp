@@ -24,6 +24,10 @@ spring:
         streamable-http:
           mcp-endpoint: /mcp       # the STATELESS auto-configuration reads the streamable-http endpoint property
   kafka:
+    template:
+      observation-enabled: true    # producer span + traceparent header on every record
+    listener:
+      observation-enabled: true    # consumer span joins the trace found in the record headers
     producer:
       # StringSerializer + the contracts JsonMapper: the envelope is plain JSON, no Spring type headers
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -44,6 +48,29 @@ server:
   shutdown: graceful
 
 management:
+  # OpenTelemetry (ADR-0024): traces + logs pushed over OTLP/HTTP to the collector (otel-lgtm), metrics scraped
+  # from /actuator/prometheus. Off unless OTEL_ENABLED=true, so a laptop without the collector logs no export errors.
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      enabled: ${OTEL_ENABLED:false}
+  logging:
+    export:
+      otlp:
+        enabled: ${OTEL_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
+      deployment.environment: ${SPRING_PROFILES_ACTIVE:local}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs
   endpoints:
     web:
       exposure:
@@ -58,7 +85,7 @@ management:
 
 logging:
   pattern:
-    correlation: "[${spring.application.name},%X{jobId:-}] "   # MDC jobId on every line (set by the inbox handler)
+    correlation: "[${spring.application.name},%X{traceId:-},%X{spanId:-},%X{jobId:-}] "   # MDC jobId on every line (set by the inbox handler)
 
 app:
   security:
