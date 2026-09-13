@@ -9,7 +9,7 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import java.time.Duration;
 
 /**
- * Cache-aside setup for job reads (PRD §4.7): cache "jobs", TTL 60 s, evicted on every status
+ * Cache-aside setup for job reads: cache "jobs", TTL 60 s, evicted on every status
  * change. A customizer (rather than replacing the CacheManager) keeps Boot's auto-configuration —
  * metrics, further caches from properties — intact while pinning this one cache's TTL in code,
  * where the eviction points can reference its name.

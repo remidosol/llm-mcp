@@ -29,7 +29,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
- * The choreography saga's view from job-service (PRD §4.2): every incoming event is a proposed
+ * The choreography saga's view from job-service: every incoming event is a proposed
  * transition. The transition table decides; implied intermediate steps are walked ({@link SagaPath});
  * rejected transitions are logged, counted ({@code saga.guard_rejected}) and IGNORED — no exception,
  * so nothing is retried or dead-lettered for what is merely out-of-order delivery. Each handler is

@@ -27,8 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The real OpenAI adapter (openai-java SDK through Spring AI) against a WireMock upstream (PRD task
- * 5.5): success parsing, retry on 429, and the breaker opening after a burst of 500s.
+ * The real OpenAI adapter (openai-java SDK through Spring AI) against a WireMock upstream: success
+ * parsing, retry on 429, and the breaker opening after a burst of 500s.
  */
 @SpringBootTest(properties = {
         "spring.ai.openai.api-key=test-key",

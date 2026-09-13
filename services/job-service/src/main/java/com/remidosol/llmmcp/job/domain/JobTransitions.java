@@ -4,13 +4,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The job state machine as a TABLE, not scattered {@code if}s (State pattern, PRD §4.2). It exists
+ * The job state machine as a TABLE, not scattered {@code if}s (State pattern). It exists
  * because in Phase 4 events for the same job arrive across three Kafka topics and only per-partition
  * order is guaranteed — every saga handler asks this table first, and invalid transitions are
  * ignored, not retried. Keeping the table in one place makes "which transitions are legal" a
  * 10-second code review instead of a hunt.
  *
- * <p>Owner: [USER] (task 1.3). The valid pairs, straight from the PRD §4.2 diagram (8 total):
+ * <p>Owner: [USER] (task 1.3). The valid pairs, straight from the saga state diagram (8 total):
  * <pre>
  * CREATED         -> CREDIT_RESERVED | REJECTED
  * CREDIT_RESERVED -> PROCESSING | FAILED | TIMED_OUT

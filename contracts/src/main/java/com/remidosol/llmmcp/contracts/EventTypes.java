@@ -18,7 +18,7 @@ import java.util.Optional;
 
 /**
  * The event-type vocabulary. Strings, not classes, are the contract: consumers switch on these
- * constants and must skip (log, not fail) any value they do not know (PRD §4.3).
+ * constants and must skip (log, not fail) any value they do not know.
  */
 public final class EventTypes {
 

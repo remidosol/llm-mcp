@@ -13,7 +13,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Cluster-wide token bucket per provider, in Redis (PRD §4.7/4.8, ADR-0018). The Lua script does
+ * Cluster-wide token bucket per provider, in Redis (ADR-0018). The Lua script does
  * refill + take ATOMICALLY on the Redis side — two worker replicas cannot both take the last token.
  * A caller waits up to {@code max-wait} for a token, then is shed with a retryable failure and
  * {@code ratelimit.rejected{provider}} increments: back-pressure first, load shedding second.

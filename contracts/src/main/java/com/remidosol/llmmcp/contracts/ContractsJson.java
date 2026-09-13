@@ -7,7 +7,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The one JSON mapper every producer and consumer uses for event envelopes. It exists so the wire
  * format is defined in exactly one place: ISO-8601 timestamps, and a tolerant reader — unknown
- * fields are ignored so a producer can add fields without breaking older consumers (PRD §4.3).
+ * fields are ignored so a producer can add fields without breaking older consumers.
  */
 public final class ContractsJson {
 

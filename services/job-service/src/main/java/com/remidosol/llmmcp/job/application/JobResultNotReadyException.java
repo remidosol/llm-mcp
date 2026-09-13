@@ -2,7 +2,7 @@ package com.remidosol.llmmcp.job.application;
 
 import java.util.UUID;
 
-/** The job exists but is not COMPLETED: the API answers 404 until it is (PRD §4.5). */
+/** The job exists but is not COMPLETED: the API answers 404 until it is. */
 public class JobResultNotReadyException extends RuntimeException {
 
     public JobResultNotReadyException(UUID jobId) {

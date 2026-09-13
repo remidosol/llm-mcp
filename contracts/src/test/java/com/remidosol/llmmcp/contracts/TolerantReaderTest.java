@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** A producer may add fields at any time; consumers must not break (PRD §4.3 versioning rules). */
+/** A producer may add fields at any time; consumers must not break. */
 class TolerantReaderTest {
 
     @Test

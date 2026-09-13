@@ -8,7 +8,8 @@ import com.tngtech.archunit.lang.ArchRule;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * The hexagonal-lite boundaries of PRD §6, enforced at build time (ADR-0003). Duplicated per
+ * The hexagonal-lite boundaries (api / application / domain / infrastructure), enforced at build
+ * time (ADR-0003). Duplicated per
  * service on purpose: services share nothing but {@code contracts}, so each carries its own copy
  * of these rules, including the Phase 3 "no KafkaTemplate.send outside the outbox publisher".
  */

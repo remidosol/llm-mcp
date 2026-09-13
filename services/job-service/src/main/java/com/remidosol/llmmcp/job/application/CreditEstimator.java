@@ -3,7 +3,7 @@ package com.remidosol.llmmcp.job.application;
 import org.springframework.stereotype.Component;
 
 /**
- * Deliberately simplistic credit estimation (PRD §4.4): {@code max(1, ceil(len/4) * multiplier)}.
+ * Deliberately simplistic credit estimation: {@code max(1, ceil(len/4) * multiplier)}.
  * It exists as its own component so the estimate has one home, one unit test, and one place to
  * swap for a token-count-based model later — the saga only ever sees a number.
  */

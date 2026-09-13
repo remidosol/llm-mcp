@@ -8,7 +8,7 @@ import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-/** Real Postgres, Kafka and Redis for tests (PRD §8); images pinned per docs/verified-versions.md. */
+/** Real Postgres, Kafka and Redis for tests; images pinned per docs/verified-versions.md. */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 

@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * The transactional outbox contract (PRD Phase 3 DoD): the event row is committed WITH the job,
+ * The transactional outbox contract: the event row is committed WITH the job,
  * the poller moves it to Kafka, and a Kafka outage loses nothing — rows wait, then drain.
  */
 class OutboxIntegrationTest extends AbstractIntegrationTest {

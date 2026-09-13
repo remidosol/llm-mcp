@@ -9,7 +9,7 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 
 import java.time.Duration;
 
-/** "credits" cache: 5 s TTL (PRD §4.7) plus eviction on every write path via CreditCacheEvictor. */
+/** "credits" cache: 5 s TTL plus eviction on every write path via CreditCacheEvictor. */
 @Configuration
 @EnableCaching
 class CacheConfig {

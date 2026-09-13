@@ -11,7 +11,7 @@ import java.util.Optional;
  * by a reservation, and every success by a start, the later event implies the earlier states:
  * this class walks the forward chain CREATED → CREDIT_RESERVED → PROCESSING until the table
  * allows the target. Anything else (backwards, from a terminal state, self-transition) is a guard
- * rejection — ignored, never retried (PRD §4.2).
+ * rejection — ignored, never retried.
  */
 public final class SagaPath {
 

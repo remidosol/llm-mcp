@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test (PRD §7 `make smoke`): one happy job and one [FAIL] job for u1, then the event trail.
+# Smoke test (`make smoke`): one happy job and one [FAIL] job for u1, then the event trail.
 # Requires: make compose-up && make run-all
 set -euo pipefail
 JOB=${JOB_URL:-http://localhost:8081}; CREDIT=${CREDIT_URL:-http://localhost:8082}; KEY=${API_KEY:-local-dev-key}

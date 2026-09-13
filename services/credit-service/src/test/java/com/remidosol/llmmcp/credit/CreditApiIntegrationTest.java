@@ -19,7 +19,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-/** GET/topup contract (PRD §4.5) and the 5 s cache-aside behaviour (PRD §4.7). */
+/** GET/topup contract and the 5 s cache-aside behaviour. */
 class CreditApiIntegrationTest extends AbstractIntegrationTest {
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP = new ParameterizedTypeReference<>() {

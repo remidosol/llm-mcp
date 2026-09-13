@@ -11,7 +11,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 
 /**
- * Retry + dead-letter policy for every listener in this service (PRD §4.8, ADR-0008): exponential
+ * Retry + dead-letter policy for every listener in this service (ADR-0008): exponential
  * backoff 1 s → 10 s, 5 attempts in total, then the record goes to {@code <topic>.DLT}.
  * {@link NonRetryableException}s skip the retries. Boot picks up the single
  * {@code CommonErrorHandler} bean for its auto-configured listener container factory.
@@ -23,7 +23,7 @@ class KafkaErrorHandlingConfig {
     DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String, String> template, MeterRegistry registry) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template, (record, ex) -> {
             registry.counter("dlt.messages", "topic", record.topic()).increment();
-            // DLTs have ONE partition (PRD §4.3); the default resolver would reuse the source partition
+            // DLTs have ONE partition; the default resolver would reuse the source partition
             return new TopicPartition(Topics.dlt(record.topic()), 0);
         });
 

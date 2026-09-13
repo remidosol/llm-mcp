@@ -6,7 +6,7 @@ import java.util.UUID;
 /**
  * RFC 9562 UUIDv7: 48-bit Unix millisecond timestamp, version nibble 7, 74 random bits. Exists
  * because event ids double as inbox primary keys and outbox ordering keys — a time-ordered id keeps
- * B-tree inserts append-only and makes "sort by id" mean "sort by time" (PRD §4.3).
+ * B-tree inserts append-only and makes "sort by id" mean "sort by time".
  */
 public final class UuidV7 {
 

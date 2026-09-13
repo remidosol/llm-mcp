@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * The saga's second step on the real wire (PRD Phase 2 DoD + task 2.6): JobCreated in, a
+ * The saga's second step on the real wire: JobCreated in, a
  * reservation row and CreditReserved/CreditRejected out; duplicates absorbed by the inbox; poison
  * records parked on the DLT; unknown event types skipped.
  */

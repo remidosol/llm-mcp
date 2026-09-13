@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 
 /**
- * The provider that never costs money — default in local and test (PRD §4.5). With failure
+ * The provider that never costs money — default in local and test. With failure
  * injection on, prompt prefixes drive chaos: {@code [FAIL]} → non-retryable failure,
  * {@code [FLAKY]} → fails the first two attempts, {@code [SLOW]} → sleeps long enough to trip
- * the job-service watchdog (PRD §4.8).
+ * the job-service watchdog.
  */
 @Component
 public class FakeProvider implements LlmProvider {

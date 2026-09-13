@@ -7,7 +7,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pure unit test — no Spring context. The estimate is deliberately simplistic (PRD §4.4):
+ * Pure unit test — no Spring context. The estimate is deliberately simplistic:
  * {@code max(1, ceil(len/4) * multiplier)}, multiplier chosen by the model's provider prefix.
  */
 class CreditEstimatorTest {

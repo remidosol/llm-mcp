@@ -11,7 +11,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 
 /**
- * Keeps the outbox small (PRD task 3.2 "retention job"). In polling mode only PUBLISHED rows are
+ * Keeps the outbox small. In polling mode only PUBLISHED rows are
  * deleted; in CDC mode Debezium never marks rows, so age is the criterion (the WAL already carried
  * them). The "insert then delete in the same transaction" trick would remove the row even earlier
  * with CDC — kept as a documented option, not applied, so the row stays inspectable locally.

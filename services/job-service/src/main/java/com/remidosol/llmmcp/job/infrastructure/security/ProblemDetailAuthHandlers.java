@@ -10,7 +10,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-/** RFC 9457 bodies for 401/403, so security errors look like every other API error (PRD §4.5). */
+/** RFC 9457 bodies for 401/403, so security errors look like every other API error. */
 final class ProblemDetailAuthHandlers {
 
     private ProblemDetailAuthHandlers() {

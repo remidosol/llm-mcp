@@ -26,7 +26,7 @@ public class JobQueryService {
         this.resultRepository = resultRepository;
     }
 
-    /** 404 until the job is COMPLETED (PRD §4.5) — a late result is kept but not served here. */
+    /** 404 until the job is COMPLETED — a late result is kept but not served here. */
     @Transactional(readOnly = true)
     public JobResultView getResult(UUID id) {
         boolean completed = jobRepository.findById(id)

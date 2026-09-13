@@ -3,7 +3,7 @@ package com.remidosol.llmmcp.credit.infrastructure.messaging;
 /**
  * Marks a failure that retrying cannot fix (unparseable record, schema violation). The error
  * handler sends such records straight to the dead-letter topic instead of burning the backoff
- * budget (PRD §4.8, ADR-0008).
+ * budget (ADR-0008).
  */
 public class NonRetryableException extends RuntimeException {
 

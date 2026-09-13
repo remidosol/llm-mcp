@@ -21,5 +21,5 @@ app:
   security:
     mcp-open: true            # Claude Code / MCP Inspector talk to /mcp without a key on a laptop
   saga:
-    job-timeout: 20s          # demo-friendly: PRD default is 120s (see docs/runbook.md)
+    job-timeout: 20s          # demo-friendly: production default is 120s (see docs/runbook.md)
     watchdog-interval: 5s

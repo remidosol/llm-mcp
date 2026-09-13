@@ -3,9 +3,8 @@
 Credit-based LLM job pipeline — a learning-first, event-driven microservices project:
 choreography saga, transactional outbox, Kafka (KRaft), Kubernetes, Spring AI 2.0 MCP.
 
-The full specification lives in [docs/PRD.md](docs/PRD.md). Decisions are recorded in
-[docs/adr/](docs/adr/), verified dependency versions in
-[docs/verified-versions.md](docs/verified-versions.md).
+Verified dependency versions and Boot 4 corrections are recorded in
+[docs/verified-versions.md](docs/verified-versions.md); day-to-day commands in [docs/runbook.md](docs/runbook.md).
 
 ## Services
 
@@ -63,4 +62,4 @@ Every consumer runs through an inbox (`processed_event`), every producer through
 transitions are a table, out-of-order events walk their implied path, invalid ones are counted and ignored.
 Run it: `make compose-up && make run-all && make smoke` (see [docs/runbook.md](docs/runbook.md)).
 
-Architecture diagram and the full demo script arrive with Phase 8 (PRD §11).
+Architecture diagram and the full demo script arrive with Phase 8.

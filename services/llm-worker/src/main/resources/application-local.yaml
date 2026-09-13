@@ -14,4 +14,4 @@ app:
   llm:
     fake:
       failure-injection: true
-      slow-delay: 30s          # demo-friendly (PRD default 150s); job-service local timeout is 20s
+      slow-delay: 30s          # demo-friendly (default 150s); job-service local timeout is 20s

@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Boot has no built-in Kafka health indicator; this one asks the cluster for its node list with a
  * short timeout. Bean name {@code kafkaHealthIndicator} -> contributor key {@code kafka}, which the
- * readiness group includes (PRD §4.10): a pod that cannot reach Kafka takes no traffic.
+ * readiness group includes: a pod that cannot reach Kafka takes no traffic.
  */
 @Component("kafkaHealthIndicator")
 public class KafkaHealthIndicator implements HealthIndicator {

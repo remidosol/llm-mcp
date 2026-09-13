@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Saga step 2 (PRD §4.2): react to {@code JobCreated} by holding credits. The account row is
+ * Saga step 2: react to {@code JobCreated} by holding credits. The account row is
  * locked with {@code SELECT … FOR UPDATE} so two reservations for the same user cannot both read
  * the old {@code available} and over-commit — the classic lost-update anomaly of sagas, solved
  * here with a pessimistic lock inside one short transaction.

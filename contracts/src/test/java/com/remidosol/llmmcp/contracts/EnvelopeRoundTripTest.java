@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Every payload record, wrapped in an envelope, must serialize to a document that validates
- * against the shipped schemas and read back as an equal object (PRD §4.3).
+ * against the shipped schemas and read back as an equal object.
  */
 class EnvelopeRoundTripTest {
 

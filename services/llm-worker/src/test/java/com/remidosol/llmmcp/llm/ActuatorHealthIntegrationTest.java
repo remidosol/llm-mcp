@@ -13,7 +13,7 @@ import java.net.http.HttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** PRD §4.10: readiness = dependencies answer; breaker state is visible in health and metrics. */
+/** Readiness = dependencies answer; breaker state is visible in health and metrics. */
 class ActuatorHealthIntegrationTest extends AbstractIntegrationTest {
 
     @LocalServerPort

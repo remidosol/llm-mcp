@@ -53,7 +53,7 @@ management:
       show-details: always
       group:
         readiness:
-          include: readinessState,db,redis,kafka   # traffic only when every dependency answers (PRD §4.10)
+          include: readinessState,db,redis,kafka   # traffic only when every dependency answers
   # liveness/readiness health groups are enabled by default in Boot 4.1
 
 logging:
@@ -75,7 +75,7 @@ app:
     retention: 7d
     retention-cron: "0 0 3 * * *"
   saga:
-    job-timeout: 120s         # CREDIT_RESERVED/PROCESSING older than this -> TIMED_OUT (PRD §4.2)
+    job-timeout: 120s         # CREDIT_RESERVED/PROCESSING older than this -> TIMED_OUT
     watchdog-interval: 30s
   credits:
     default-multiplier: 1

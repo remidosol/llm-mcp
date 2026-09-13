@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The idempotent-consumer template (PRD §4.8, ADR-0007): every listener runs its handler through
+ * The idempotent-consumer template (ADR-0007): every listener runs its handler through
  * this method. The invariant steps — claim the event id in {@code processed_event}, run the
  * handler, commit both together — are fixed here; only the handler varies (Template Method, in
  * functional form). Kafka is at-least-once, so redelivery is normal: the second delivery hits
@@ -34,7 +34,7 @@ public class IdempotentHandler {
 
     @Transactional
     public void handle(EventEnvelope envelope, String consumerGroup, Runnable handler) {
-        // correlationId is the job id for every event in the saga (PRD §4.3): one MDC key tags every log line
+        // correlationId is the job id for every event in the saga: one MDC key tags every log line
         try (MDC.MDCCloseable ignored = MDC.putCloseable("jobId", envelope.correlationId())) {
             claimAndRun(envelope, consumerGroup, handler);
         }

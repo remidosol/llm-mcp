@@ -1,4 +1,4 @@
--- llm_db schema (PRD §4.4)
+-- llm_db schema
 
 create table llm_attempt (
     id                uuid primary key,

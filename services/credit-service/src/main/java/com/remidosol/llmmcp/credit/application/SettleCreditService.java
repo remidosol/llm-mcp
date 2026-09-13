@@ -21,7 +21,7 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 
 /**
- * Saga step 6 (PRD §4.2): settle a reservation. Capture deducts the ACTUAL cost (possibly less than
+ * Saga step 6: settle a reservation. Capture deducts the ACTUAL cost (possibly less than
  * the estimate — partial capture) and frees the whole hold; release is the compensation for a
  * failed or timed-out job and deducts nothing. Both are guarded: a reservation that is no longer
  * RESERVED (duplicate, or a late/out-of-order event) is logged, counted and ignored — never retried.

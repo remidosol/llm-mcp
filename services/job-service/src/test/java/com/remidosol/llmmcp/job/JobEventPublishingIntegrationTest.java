@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * POST /api/jobs must end with a schema-shaped JobCreated envelope on job.events.v1, keyed by the
- * job id, with the eventType/eventId headers tooling relies on (PRD §4.3, task 2.2).
+ * job id, with the eventType/eventId headers tooling relies on.
  */
 class JobEventPublishingIntegrationTest extends AbstractIntegrationTest {
 

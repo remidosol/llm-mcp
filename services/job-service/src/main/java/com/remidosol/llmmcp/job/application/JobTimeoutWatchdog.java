@@ -14,7 +14,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * Saga timeouts (PRD §4.2, ADR-0016): a job that sits in CREDIT_RESERVED or PROCESSING longer than
+ * Saga timeouts (ADR-0016): a job that sits in CREDIT_RESERVED or PROCESSING longer than
  * {@code app.saga.job-timeout} is moved to TIMED_OUT and a {@code JobTimedOut} event releases the
  * credits. The batch is claimed with {@code FOR UPDATE SKIP LOCKED}, so replicas never race.
  */

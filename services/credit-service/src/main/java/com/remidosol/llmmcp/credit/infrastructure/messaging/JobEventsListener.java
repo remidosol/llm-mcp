@@ -17,7 +17,7 @@ import tools.jackson.core.JacksonException;
 
 /**
  * Inbound Kafka adapter for {@code job.events.v1}. Parses the envelope, dispatches on the
- * eventType STRING (unknown types are logged and skipped, PRD §4.3) and runs every handler through
+ * eventType STRING (unknown types are logged and skipped) and runs every handler through
  * the inbox. Offsets are committed after this method returns (at-least-once).
  */
 @Component

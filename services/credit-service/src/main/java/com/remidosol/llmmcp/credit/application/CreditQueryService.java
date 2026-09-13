@@ -5,7 +5,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Read side: cached 5 s (PRD §4.7) — short on purpose, balances change on every saga step. */
+/** Read side: cached 5 s — short on purpose, balances change on every saga step. */
 @Service
 public class CreditQueryService {
 

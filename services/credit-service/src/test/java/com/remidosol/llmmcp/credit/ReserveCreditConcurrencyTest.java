@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The lost-update anomaly, provoked on purpose: N threads try to reserve 60 of 100 credits for the
  * same user at the same instant. Without {@code SELECT … FOR UPDATE} several would read
- * available=100 and all succeed; with it, exactly one wins (PRD §4.2 saga isolation).
+ * available=100 and all succeed; with it, exactly one wins.
  */
 class ReserveCreditConcurrencyTest extends AbstractIntegrationTest {
 

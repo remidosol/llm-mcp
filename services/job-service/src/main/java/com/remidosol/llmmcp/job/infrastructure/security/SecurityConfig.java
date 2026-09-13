@@ -10,7 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Deliberately minimal security (PRD §4.9, ADR-0019): stateless, no CSRF (no browser sessions),
+ * Deliberately minimal security (ADR-0019): stateless, no CSRF (no browser sessions),
  * health/metrics/docs open for the cluster, everything under /api behind an API key, and /mcp
  * open only where {@code app.security.mcp-open} says so (local).
  */

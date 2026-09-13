@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The fixtures are the frozen wire format: every consumer test in every service reuses them, so a
- * change that breaks a fixture is a contract change and needs an ADR + version bump (PRD §4.3).
+ * change that breaks a fixture is a contract change and needs an ADR + version bump.
  */
 class FixtureCompatibilityTest {
 

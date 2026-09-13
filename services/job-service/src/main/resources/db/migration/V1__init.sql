@@ -1,4 +1,4 @@
--- job_db schema (PRD §4.4). Migrations are immutable: never edit, always add a new version.
+-- job_db schema. Migrations are immutable: never edit, always add a new version.
 
 create table job (
     id                uuid primary key,
@@ -40,7 +40,7 @@ create table outbox (
 );
 create index idx_outbox_pending on outbox (published_at) where published_at is null;
 
--- Inbox for idempotent consumers (PRD §4.8): insert in the same transaction as the handler.
+-- Inbox for idempotent consumers: insert in the same transaction as the handler.
 create table processed_event (
     event_id       uuid        not null,
     consumer_group text        not null,

@@ -1,7 +1,7 @@
 package com.remidosol.llmmcp.contracts;
 
 /**
- * Topic names carry the contract's major version (PRD §4.3): a breaking change ships as a new
+ * Topic names carry the contract's major version: a breaking change ships as a new
  * topic, never as a surprise on the old one. Dead letters live next to their source topic.
  */
 public final class Topics {

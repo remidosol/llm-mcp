@@ -1,4 +1,4 @@
--- credit_db schema (PRD §4.4). Migrations are immutable: never edit, always add a new version.
+-- credit_db schema. Migrations are immutable: never edit, always add a new version.
 
 -- balance is what the user owns; reserved is the semantic lock held by in-flight jobs (Richardson,
 -- saga countermeasures). Readers MUST interpret available = balance - reserved.
@@ -11,7 +11,7 @@ create table credit_account (
     constraint chk_credit_reserved_non_negative check (reserved >= 0)
 );
 
--- job_id is UNIQUE: reservation is idempotent even if the inbox check were bypassed (PRD §4.2).
+-- job_id is UNIQUE: reservation is idempotent even if the inbox check were bypassed.
 create table credit_reservation (
     id              uuid primary key,
     job_id          uuid        not null unique,

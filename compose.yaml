@@ -83,7 +83,7 @@ services:
       timeout: 5s
       retries: 10
     labels:
-      # each service uses its explicit spring.datasource.url (database per service, PRD §7)
+      # each service uses its explicit spring.datasource.url (database per service)
       org.springframework.boot.ignore: "true"
 
   redis:

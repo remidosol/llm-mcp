@@ -17,7 +17,7 @@ import java.util.UUID;
 /**
  * One job's hold on credits. Exists as its own row (not just a number on the account) so that
  * capture/release know exactly how much to give back per job, and so {@code job_id UNIQUE} makes a
- * duplicate reservation impossible at the storage level (PRD §4.2).
+ * duplicate reservation impossible at the storage level.
  */
 @Entity
 @Table(name = "credit_reservation")

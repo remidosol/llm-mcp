@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * PRD task 4.5 — the saga end to end against real services on compose: happy path, [FAIL]
+ * The saga end to end against real services on compose: happy path, [FAIL]
  * compensation, [SLOW] timeout + late result, and out-of-order delivery. Requires
  * {@code make compose-up && make run-all} (local profile: job timeout 20 s, fake [SLOW] 30 s).
  */

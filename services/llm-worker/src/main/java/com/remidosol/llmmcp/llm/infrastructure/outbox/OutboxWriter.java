@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import java.sql.Timestamp;
 
 /**
- * The write half of the transactional outbox (PRD §4.8, ADR-0009): appends the full envelope as a
+ * The write half of the transactional outbox (ADR-0009): appends the full envelope as a
  * row in the SAME database transaction as the state change that caused it. Column names follow
  * the Debezium outbox EventRouter defaults so the CDC publisher needs no mapping; the poller reads
  * the same row. Plain SQL via JdbcClient: it shares the JPA transaction's connection, and the

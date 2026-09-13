@@ -4,7 +4,7 @@ package com.remidosol.llmmcp.job.domain;
  * Thrown when a state change violates the transition table. It exists so that callers can
  * distinguish "business rule said no" from technical failures: saga handlers (Phase 4) catch it,
  * log at WARN, count it, and IGNORE the event — out-of-order delivery across topics is normal,
- * not an error (PRD §4.2).
+ * not an error.
  */
 public class InvalidTransitionException extends RuntimeException {
 

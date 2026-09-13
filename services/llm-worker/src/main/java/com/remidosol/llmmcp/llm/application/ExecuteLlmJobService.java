@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Saga step 4 (PRD §4.2): run the prompt for a reserved job. Runs INSIDE the inbox transaction, so
+ * Saga step 4: run the prompt for a reserved job. Runs INSIDE the inbox transaction, so
  * the event claim, the attempt outcome and the outbox row commit together — a crash mid-call rolls
  * the claim back and the redelivered event produces a fresh attempt (attemptNo + 1). The provider
  * is chosen by model prefix (Strategy); the worker never talks to job-service: prompt and model

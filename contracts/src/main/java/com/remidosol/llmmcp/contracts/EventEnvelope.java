@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The single wire format for every Kafka record in the system (PRD §4.3): one JSON object, no
+ * The single wire format for every Kafka record in the system: one JSON object, no
  * Spring type headers. Dispatch is by {@code eventType} string, never by Java class, so services
  * can evolve independently. {@code correlationId} is the job id for the whole saga; {@code
  * causationId} is the id of the event that triggered this one — together they let a trace be

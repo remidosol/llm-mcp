@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * springdoc metadata for the OpenAPI UI at /swagger-ui.html. Exists so the API is explorable
- * without reading code — the PRD's demo script opens this page.
+ * without reading code — the demo script opens this page.
  */
 @Configuration
 @OpenAPIDefinition(info = @Info(

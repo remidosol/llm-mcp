@@ -9,7 +9,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Real infrastructure for tests — Testcontainers, never H2 (PRD §8): the production database is
+ * Real infrastructure for tests — Testcontainers, never H2: the production database is
  * Postgres, so tests run against Postgres. {@code @ServiceConnection} feeds each container's
  * host/port/credentials straight into Boot's connection details — no property plumbing.
  *

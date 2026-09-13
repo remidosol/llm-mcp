@@ -10,7 +10,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/** Same shape as job-service (ADR-0019) plus the admin-only top-up rule (PRD §4.5). */
+/** Same shape as job-service (ADR-0019) plus the admin-only top-up rule. */
 @Configuration
 class SecurityConfig {
 

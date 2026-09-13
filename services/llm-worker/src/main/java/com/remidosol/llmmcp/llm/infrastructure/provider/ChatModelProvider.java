@@ -22,7 +22,7 @@ abstract class ChatModelProvider implements LlmProvider {
         this.chatModel = chatModel;
     }
 
-    /** Provider-specific options: model id and the {@code max_tokens} cost cap (PRD §10.2). */
+    /** Provider-specific options: model id and the {@code max_tokens} cost cap. */
     protected abstract ChatOptions options(String model, int maxTokens);
 
     /** Whether a failure is worth retrying (429, 5xx, I/O) — provider SDKs encode this differently. */

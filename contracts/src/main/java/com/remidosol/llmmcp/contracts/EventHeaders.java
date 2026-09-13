@@ -2,7 +2,7 @@ package com.remidosol.llmmcp.contracts;
 
 /**
  * Kafka record header names. Headers let tooling (kafka-ui, DLT triage, tracing) read the event
- * type and id without parsing the JSON value (PRD §4.3).
+ * type and id without parsing the JSON value.
  */
 public final class EventHeaders {
 

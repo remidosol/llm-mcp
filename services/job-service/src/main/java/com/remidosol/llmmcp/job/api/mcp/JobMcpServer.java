@@ -25,7 +25,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * The MCP surface of job-service (PRD §4.6, ADR-0017): a second inbound adapter next to the REST
+ * The MCP surface of job-service (ADR-0017): a second inbound adapter next to the REST
  * controller, calling the SAME application services. Spring AI's annotation scanner turns each
  * annotated method into a tool / resource / prompt / completion spec; the transport is stateless
  * Streamable HTTP on {@code /mcp}. Exceptions thrown here become {@code isError} tool results —

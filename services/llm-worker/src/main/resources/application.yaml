@@ -60,11 +60,11 @@ app:
     retention: 7d
     retention-cron: "0 0 3 * * *"
   llm:
-    max-tokens: 512            # cost cap for real providers (PRD §10.2)
+    max-tokens: 512            # cost cap for real providers
     fake:
       latency: 200ms
       failure-injection: false # [FAIL]/[FLAKY]/[SLOW] prompt hooks; on in local and test only
-      slow-delay: 150s         # PRD §4.8: forces the watchdog timeout
+      slow-delay: 150s         # forces the job-service watchdog timeout
     ratelimit:                 # Redis token bucket per provider (ADR-0018)
       max-wait: 5s
       providers:

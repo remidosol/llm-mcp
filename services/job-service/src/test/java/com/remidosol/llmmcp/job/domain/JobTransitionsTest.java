@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The full transition matrix: 7×7 = 49 pairs, of which exactly 8 are legal (PRD §4.2). Owner:
+ * The full transition matrix: 7×7 = 49 pairs, of which exactly 8 are legal. Owner:
  * [USER] (task 1.5) — Claude provides the parameterized skeleton, you provide the truth.
  */
 class JobTransitionsTest {

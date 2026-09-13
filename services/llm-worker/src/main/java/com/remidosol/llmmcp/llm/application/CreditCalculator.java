@@ -2,7 +2,7 @@ package com.remidosol.llmmcp.llm.application;
 
 import org.springframework.stereotype.Component;
 
-/** actualCredits = max(1, ceil((promptTokens + completionTokens) / 10) * multiplier) — PRD §4.4. */
+/** actualCredits = max(1, ceil((promptTokens + completionTokens) / 10) * multiplier). */
 @Component
 public class CreditCalculator {
 
