@@ -1,0 +1,86 @@
+# The six topics of compose's kafka-init, as CRs: 3 partitions / 7 d for events, 1 partition / 30 d for DLTs (ADR-0006).
+# metadata.name must be DNS-safe, so the real topic name lives in spec.topicName.
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: job-events-v1
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: job.events.v1
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 604800000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: credit-events-v1
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: credit.events.v1
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 604800000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: llm-events-v1
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: llm.events.v1
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 604800000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: job-events-v1-dlt
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: job.events.v1.DLT
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 2592000000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: credit-events-v1-dlt
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: credit.events.v1.DLT
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 2592000000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: llm-events-v1-dlt
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: llm.events.v1.DLT
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 2592000000

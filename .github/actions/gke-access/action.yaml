@@ -1,0 +1,57 @@
+name: gke-access
+description: kubeconfig for a GKE cluster (WIF token), wait for the rollouts, then port-forward services to localhost until the job ends
+inputs:
+  cluster-name:
+    description: GKE cluster name (InfraConfig.slug)
+    required: true
+  location:
+    description: cluster region
+    required: true
+  namespace:
+    description: namespace of the deployments to wait for
+    default: llm-mcp
+  deployments:
+    description: space-separated deployments that must finish rolling out
+    required: true
+  forwards:
+    description: one `<namespace>/<service> <local-port>:<remote-port>` per line
+    required: true
+  hosts:
+    description: hostnames to map to 127.0.0.1 (one per line) — Kafka clients reconnect to the broker's ADVERTISED host, so a forward to the bootstrap service alone is not enough
+    default: ""
+  readiness:
+    description: URLs that must answer 2xx before the action returns (one per line)
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: google-github-actions/get-gke-credentials@v3   # kubeconfig from the auth step's token, no gke-gcloud-auth-plugin
+      with:
+        cluster_name: ${{ inputs.cluster-name }}
+        location: ${{ inputs.location }}
+    - name: Wait for the rollouts
+      shell: bash
+      run: |
+        for d in ${{ inputs.deployments }}; do
+          kubectl -n "${{ inputs.namespace }}" rollout status "deployment/$d" --timeout=300s
+        done
+    - name: Port-forwards
+      shell: bash
+      run: |
+        while IFS= read -r host; do
+          [ -n "$host" ] && echo "127.0.0.1 $host" | sudo tee -a /etc/hosts
+        done <<< "${{ inputs.hosts }}"
+        while IFS= read -r line; do
+          [ -z "$line" ] && continue
+          set -- $line
+          kubectl -n "${1%%/*}" port-forward "svc/${1##*/}" "$2" >/dev/null 2>&1 &   # lives until the job ends
+        done <<< "${{ inputs.forwards }}"
+        sleep 2
+    - name: Wait for readiness
+      shell: bash
+      run: |
+        while IFS= read -r url; do
+          [ -z "$url" ] && continue
+          for i in $(seq 1 30); do curl -sf "$url" >/dev/null && break; sleep 2; done
+          curl -sf "$url" >/dev/null || { echo "::error::$url not ready"; exit 1; }
+        done <<< "${{ inputs.readiness }}"

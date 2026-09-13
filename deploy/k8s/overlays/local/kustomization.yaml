@@ -1,0 +1,23 @@
+# kind: images loaded with `kind load docker-image` (tag :local, never pulled), demo-friendly saga
+# timeouts, local seed data via Flyway's db/local location, job-service also on NodePort 30080.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: llm-mcp/job-service
+    newTag: local
+  - name: llm-mcp/credit-service
+    newTag: local
+  - name: llm-mcp/llm-worker
+    newTag: local
+patches:
+  - target:
+      kind: Deployment
+      labelSelector: app in (job-service, credit-service, llm-worker)
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Never
+  - path: job-service-nodeport.yaml
+  - path: config-local.yaml

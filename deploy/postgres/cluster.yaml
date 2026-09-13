@@ -1,0 +1,77 @@
+# CloudNativePG 1.30: ONE cluster, THREE databases with three owner roles (ADR-0020). Database-per-service
+# is an ownership boundary, not a "one Postgres process per service" rule — on a laptop three clusters
+# would triple the memory for no isolation the roles do not already give. Passwords come from Secrets
+# created by scripts/k8s-secrets.sh (never committed); `replication: true` is what Debezium needs later.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg
+  namespace: db
+spec:
+  instances: 1
+  storage:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 384Mi
+    limits:
+      memory: 768Mi
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: 64MB
+      # wal_level=logical is the CNPG default — no change needed for Debezium
+  managed:
+    roles:
+      - name: job
+        ensure: present
+        login: true
+        replication: true
+        passwordSecret:
+          name: pg-job
+      - name: credit
+        ensure: present
+        login: true
+        replication: true
+        passwordSecret:
+          name: pg-credit
+      - name: llm
+        ensure: present
+        login: true
+        replication: true
+        passwordSecret:
+          name: pg-llm
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: pg-job-db
+  namespace: db
+spec:
+  name: job_db
+  owner: job
+  cluster:
+    name: pg
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: pg-credit-db
+  namespace: db
+spec:
+  name: credit_db
+  owner: credit
+  cluster:
+    name: pg
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: pg-llm-db
+  namespace: db
+spec:
+  name: llm_db
+  owner: llm
+  cluster:
+    name: pg

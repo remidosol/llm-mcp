@@ -1,0 +1,147 @@
+spring:
+  application:
+    name: llm-worker
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    template:
+      observation-enabled: true    # producer span + traceparent header on every record
+    listener:
+      observation-enabled: true    # consumer span joins the trace found in the record headers
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.block.ms: 5000
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: llm-worker
+      auto-offset-reset: earliest
+      properties:
+        max.poll.interval.ms: 300000   # an LLM call may take up to 60 s; keep the consumer in the group
+  # Spring AI's model auto-configurations (chat, embedding, image, audio, moderation) demand API keys
+  # at startup; the real chat models are built explicitly in RealProvidersConfig, only when keys exist.
+  autoconfigure:
+    exclude: org.springframework.ai.model.google.genai.autoconfigure.chat.GoogleGenAiChatAutoConfiguration,org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration,org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiTextEmbeddingAutoConfiguration,org.springframework.ai.model.google.genai.autoconfigure.image.GoogleGenAiImageAutoConfiguration,org.springframework.ai.model.google.genai.autoconfigure.image.GoogleGenAiImageConnectionAutoConfiguration,org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration,org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration,org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration,org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration,org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration,org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+
+server:
+  port: 8083
+  shutdown: graceful
+
+management:
+  # OpenTelemetry (ADR-0024): traces + logs pushed over OTLP/HTTP to the collector (otel-lgtm), metrics scraped
+  # from /actuator/prometheus. Off unless OTEL_ENABLED=true, so a laptop without the collector logs no export errors.
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      enabled: ${OTEL_ENABLED:false}
+  logging:
+    export:
+      otlp:
+        enabled: ${OTEL_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
+      deployment.environment: ${SPRING_PROFILES_ACTIVE:local}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,db,redis,kafka
+  health:
+    circuitbreakers:
+      enabled: true   # resilience4j's health auto-config is opt-in: /actuator/health gets a circuitBreakers component
+
+logging:
+  pattern:
+    correlation: "[${spring.application.name},%X{traceId:-},%X{spanId:-},%X{jobId:-}] "
+
+app:
+  outbox:
+    publisher: polling
+    poll-interval: 500ms
+    batch-size: 100
+    send-timeout: 10s
+    retention: 7d
+    retention-cron: "0 0 3 * * *"
+  llm:
+    max-tokens: 512            # cost cap for real providers
+    fake:
+      latency: 200ms
+      failure-injection: false # [FAIL]/[FLAKY]/[SLOW] prompt hooks; on in local and test only
+      slow-delay: 150s         # forces the job-service watchdog timeout
+    ratelimit:                 # Redis token bucket per provider (ADR-0018)
+      max-wait: 5s
+      providers:
+        openai:
+          capacity: 10
+          refill-per-second: 2
+        gemini:
+          capacity: 10
+          refill-per-second: 2
+        fake:
+          capacity: 200
+          refill-per-second: 100
+  credits:
+    default-multiplier: 1
+    multipliers:
+      fake: 1
+      openai: 3
+      gemini: 2
+
+resilience4j:
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 1s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exception-predicate: com.remidosol.llmmcp.llm.infrastructure.resilience.RetryableFailurePredicate
+    instances:
+      openai:
+        base-config: default
+      gemini:
+        base-config: default
+      fake:
+        base-config: default
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        ignore-exception-predicate: com.remidosol.llmmcp.llm.infrastructure.resilience.NonRetryableFailurePredicate
+        register-health-indicator: true
+    instances:
+      openai:
+        base-config: default
+      gemini:
+        base-config: default
+      fake:
+        base-config: default

@@ -1,0 +1,5 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "CreditReleased", "type": "object",
+  "required": ["jobId", "reservationId", "amount"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "reservationId": { "type": "string", "format": "uuid" },
+    "amount": { "type": "integer", "minimum": 0 } },
+  "additionalProperties": true }

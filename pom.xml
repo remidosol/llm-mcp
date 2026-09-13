@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Root parent stays spring-boot-starter-parent: pluginManagement for ~20 plugins,
+         the -parameters compiler flag (required by Spring Framework 7) and resource
+         filtering come for free. See ADR-0001. -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.remidosol</groupId>
+    <artifactId>llm-mcp</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>llm-mcp</name>
+    <description>Credit-based LLM job pipeline - choreography saga, transactional outbox, Kafka, MCP</description>
+
+    <modules>
+        <module>contracts</module>
+        <module>services/job-service</module>
+        <module>services/credit-service</module>
+        <module>services/llm-worker</module>
+        <!-- e2e module is activated only via -Pe2e (profile below) -->
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
+        <!-- Versions not managed by Boot; verified 2026-08-29, see docs/verified-versions.md -->
+        <springdoc.version>3.1.0</springdoc.version>
+        <archunit.version>1.5.0</archunit.version>
+        <resilience4j.version>2.4.0</resilience4j.version>
+        <wiremock.version>3.13.1</wiremock.version>
+        <jib.version>3.5.2</jib.version>
+        <!-- image platform: arm64 on Apple Silicon laptops/kind, amd64 for GKE (-Dcontainer.arch=amd64) -->
+        <container.arch>arm64</container.arch>
+        <json-schema-validator.version>3.0.5</json-schema-validator.version> <!-- Jackson-3 native line; 3.0.5 targets jackson 3.1.x = Boot 4.1.1 -->
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
+            <!-- the ONLY Resilience4j module compatible with Boot 4 -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-spring-boot4</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <!-- standalone shades Jackson 2 + Jetty, coexists with Boot 4's Jackson 3 -->
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock-standalone</artifactId>
+                <version>${wiremock.version}</version>
+            </dependency>
+            <!-- contracts tests: JSON Schema validation of every event payload (ADR-0005) -->
+            <dependency>
+                <groupId>com.networknt</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>${json-schema-validator.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <annotationProcessorPaths>
+                            <!-- Lombok is allowed on JPA entities only (ADR-0004); a processor with no
+                                 triggering annotations is inert in modules that don't declare lombok. -->
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.springframework.boot</groupId>
+                                <artifactId>spring-boot-configuration-processor</artifactId>
+                                <version>${spring-boot.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+                <!-- Jib (ADR-0013): daemonless, layered (deps / snapshot deps / resources / classes),
+                     reproducible images without a Dockerfile; jib:dockerBuild for kind, jib:build for a registry -->
+                <plugin>
+                    <groupId>com.google.cloud.tools</groupId>
+                    <artifactId>jib-maven-plugin</artifactId>
+                    <version>${jib.version}</version>
+                    <configuration>
+                        <from>
+                            <image>eclipse-temurin:21-jre</image>
+                            <platforms>
+                                <platform>
+                                    <architecture>${container.arch}</architecture>
+                                    <os>linux</os>
+                                </platform>
+                            </platforms>
+                        </from>
+                        <to>
+                            <image>llm-mcp/${project.artifactId}</image>
+                            <tags>
+                                <tag>local</tag>
+                            </tags>
+                        </to>
+                        <container>
+                            <user>1000:1000</user>
+                            <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        </container>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>enforce-jdk</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,26)</version>
+                                    <message>Build with JDK 21 (LTS) or 25 — JDK 26 is excluded as unverified with the managed Lombok (ADR-0011). Hint: export JAVA_HOME=$(/usr/libexec/java_home -v 21)</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>e2e</id>
+            <modules>
+                <module>e2e</module>
+            </modules>
+        </profile>
+    </profiles>
+</project>

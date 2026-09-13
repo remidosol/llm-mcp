@@ -1,0 +1,146 @@
+# Shared local infrastructure. Image tags pinned per docs/verified-versions.md (2026-08-29).
+# Note: overriding ANY env var on apache/kafka discards ALL default config, so the full
+# KRaft combined-mode config is spelled out below.
+services:
+  # No data volume on purpose: topics are recreated by kafka-init on every up, and losing local
+  # event data on compose-down is acceptable locally (pgdata DOES persist — asymmetry is known).
+  kafka:
+    image: apache/kafka:4.3.1
+    ports:
+      - "9092:9092" # host listener; services inside the compose network use kafka:19092
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://:19092,CONTROLLER://:29093,PLAINTEXT_HOST://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false" # topics come from kafka-init only
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
+    labels:
+      # Boot 4.1 has no Kafka compose service connection (regression vs 3.x);
+      # spring.kafka.bootstrap-servers is set explicitly.
+      org.springframework.boot.ignore: "true"
+
+  kafka-init:
+    image: apache/kafka:4.3.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        for t in job.events.v1 credit.events.v1 llm.events.v1; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --create --if-not-exists \
+            --topic "$$t" --partitions 3 --replication-factor 1 --config retention.ms=604800000
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --create --if-not-exists \
+            --topic "$$t.DLT" --partitions 1 --replication-factor 1 --config retention.ms=2592000000
+        done
+        echo "topics ready:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --list
+    labels:
+      org.springframework.boot.ignore: "true" # one-shot container
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:v1.5.0
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    labels:
+      org.springframework.boot.ignore: "true"
+
+  postgres:
+    image: postgres:17.11
+    command: postgres -c wal_level=logical # Debezium-ready (CDC outbox publisher)
+    ports:
+      - "5433:5432" # host 5433: many dev machines run their own Postgres on 5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-llm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-llm-local}
+    volumes:
+      - ./deploy/compose/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-llm}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    labels:
+      # each service uses its explicit spring.datasource.url (database per service)
+      org.springframework.boot.ignore: "true"
+
+  redis:
+    image: redis:8.10.1
+    ports:
+      - "6380:6379" # host 6380: dev machines often run their own redis-server on 6379
+    # no ignore label: Boot's compose support auto-wires RedisConnectionDetails (mapped port included)
+
+  # Debezium Connect (CDC outbox publisher). Optional locally: `make compose-up-cdc`.
+  debezium-connect:
+    image: quay.io/debezium/connect:3.6.1.Final
+    profiles: ["cdc"]
+    ports:
+      - "8093:8083" # host 8093: 8083 is llm-worker's port
+    environment:
+      BOOTSTRAP_SERVERS: kafka:19092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: _connect_configs
+      OFFSET_STORAGE_TOPIC: _connect_offsets
+      STATUS_STORAGE_TOPIC: _connect_status
+      KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+    labels:
+      org.springframework.boot.ignore: "true"
+
+  # Observability: OTel collector + Prometheus + Tempo + Loki + Grafana in one container.
+  # Start with `make compose-up-observability`, then run the services with OTEL_ENABLED=true.
+  otel-lgtm:
+    image: grafana/otel-lgtm:0.33.0
+    profiles: ["observability"]
+    labels:
+      org.springframework.boot.ignore: "true"
+    ports:
+      - "3000:3000"   # Grafana (anonymous admin)
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    environment:
+      SCRAPE_JOB_SERVICE: host.docker.internal:8081
+      SCRAPE_CREDIT_SERVICE: host.docker.internal:8082
+      SCRAPE_LLM_WORKER: host.docker.internal:8083
+    volumes:
+      - ./deploy/observability/otelcol-config.yaml:/otel-lgtm/otelcol-config.yaml:ro
+      - ./deploy/observability/dashboards/provider.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/llm-mcp.yaml:ro
+      - ./deploy/observability/dashboards:/otel-lgtm/dashboards-llm-mcp:ro
+
+volumes:
+  pgdata:

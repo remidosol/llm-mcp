@@ -1,0 +1,25 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092 # Boot 4.1 has no Kafka compose service connection - explicit
+  docker:
+    compose:
+      file: ../../compose.yaml
+      lifecycle-management: start-only   # start shared infra once, never stop it for the others
+  datasource:
+    # explicit per-service DB: the compose postgres carries org.springframework.boot.ignore
+    url: jdbc:postgresql://localhost:5433/job_db # compose maps 5433 -> container 5432
+    username: ${POSTGRES_USER:llm}
+    password: ${POSTGRES_PASSWORD:llm-local}
+  flyway:
+    locations: classpath:db/migration,classpath:db/local   # repeatable R__ seed (runs after every versioned migration) only in local
+
+logging:
+  level:
+    org.springframework.cache: TRACE   # cache hits must be visible in logs
+
+app:
+  security:
+    mcp-open: true            # Claude Code / MCP Inspector talk to /mcp without a key on a laptop
+  saga:
+    job-timeout: 20s          # demo-friendly: production default is 120s (see docs/runbook.md)
+    watchdog-interval: 5s

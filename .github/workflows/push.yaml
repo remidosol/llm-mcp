@@ -1,0 +1,117 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Push
+
+# Buck2 is the task runner, so the pipeline is three commands: build what the push affects (a service's
+# :docker target = its tests, then a Jib push under the branch tag), apply the CDKTN stacks (the main
+# stack resolves <service>:main to the digest behind it), run the e2e suite against the rolled-out cluster.
+# Manual only for now: nothing here has run against GCP yet, and every run past `build` costs money.
+# To go live, restore the push trigger:
+#   push:
+#     branches: [main]
+on:
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: Build and push every service image regardless of the diff
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      deploy: ${{ steps.changes.outputs.docker != '[]' || steps.changes.outputs.infra == 'true' || inputs.build_all }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/auth
+        with:
+          workload-identity-provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service-account: ${{ secrets.GCP_DEPLOYER_SA }}
+          region: ${{ env.GCP_REGION }}
+      - id: changes
+        uses: ./.github/actions/detect-changes
+        with:
+          base: ${{ github.event.before }}
+          head: ${{ github.sha }}
+      - name: Verify and push what this push affects (Jib, amd64, tag = branch)
+        run: |
+          targets="${{ inputs.build_all && '//:verify //:docker' || steps.changes.outputs.build }}"
+          [ -z "$targets" ] && { echo "nothing to build" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          buck2 build $targets -c llmmcp.registry="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/llmmcp"
+          echo "built: $targets" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: build
+    if: ${{ needs.build.outputs.deploy == 'true' }}
+    runs-on: ubuntu-latest
+    environment: gke            # required reviewers = the approval gate; nothing costs money before a click
+    concurrency:
+      group: deploy-gke
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/auth
+        with:
+          workload-identity-provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service-account: ${{ secrets.GCP_DEPLOYER_SA }}
+          region: ${{ env.GCP_REGION }}
+      - name: Apply the CDKTN stacks (an unchanged stack is a no-op plan)
+        env:
+          TF_VAR_app_api_keys: ${{ secrets.APP_API_KEYS }}
+          TF_VAR_app_admin_api_keys: ${{ secrets.APP_ADMIN_API_KEYS }}
+          TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          buck2 run //infra:apply@common
+          buck2 run //infra:apply@main
+
+  e2e:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/auth
+        with:
+          workload-identity-provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service-account: ${{ secrets.GCP_DEPLOYER_SA }}
+          region: ${{ env.GCP_REGION }}
+      - uses: ./.github/actions/gke-access
+        with:
+          cluster-name: llmmcp                # InfraConfig.slug (CommonStack cluster name)
+          location: ${{ env.GCP_REGION }}
+          deployments: job-service credit-service llm-worker
+          forwards: |
+            llm-mcp/job-service 8081:8081
+            llm-mcp/credit-service 8082:8082
+            kafka/llm-mcp-kafka-bootstrap 9092:9092
+          hosts: llm-mcp-dual-role-0.llm-mcp-kafka-brokers.kafka.svc   # the single broker's Strimzi advertised name
+          readiness: |
+            http://localhost:8081/actuator/health/readiness
+            http://localhost:8082/actuator/health/readiness
+      - name: e2e (saga happy / [FAIL] / [SLOW] timeout / out-of-order) against GKE
+        env:
+          E2E_JOB_URL: http://localhost:8081
+          E2E_CREDIT_URL: http://localhost:8082
+          E2E_KAFKA: localhost:9092
+          E2E_API_KEY: ${{ secrets.E2E_API_KEY }}             # one of APP_API_KEYS
+          E2E_ADMIN_API_KEY: ${{ secrets.E2E_ADMIN_API_KEY }} # one of APP_ADMIN_API_KEYS (top-ups for fresh users)
+        run: make e2e
+      - uses: ./.github/actions/pod-logs
+        if: failure()
+        with:
+          deployments: job-service credit-service llm-worker
+          name: gke-pod-logs

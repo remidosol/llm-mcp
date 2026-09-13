@@ -1,0 +1,4 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "JobTimedOut", "type": "object",
+  "required": ["jobId", "userId"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "userId": { "type": "string" } },
+  "additionalProperties": true }

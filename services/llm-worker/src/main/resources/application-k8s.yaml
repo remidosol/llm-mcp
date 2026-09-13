@@ -1,0 +1,6 @@
+# Any Kubernetes cluster (kind or GKE): hosts, credentials and knobs come from the ConfigMap/Secret env;
+# the Docker Compose support must not try to start compose.yaml inside a pod.
+spring:
+  docker:
+    compose:
+      enabled: false

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-mcp.remidosol.com/schemas/envelope.schema.json",
+  "title": "EventEnvelope",
+  "type": "object",
+  "required": ["eventId", "eventType", "eventVersion", "occurredAt", "aggregateType", "aggregateId", "correlationId", "producer", "payload"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "type": "string", "minLength": 1 },
+    "eventVersion": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "aggregateType": { "type": "string", "enum": ["job", "credit", "llm"] },
+    "aggregateId": { "type": "string", "minLength": 1 },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "causationId": { "type": ["string", "null"], "format": "uuid" },
+    "producer": { "type": "string", "enum": ["job-service", "credit-service", "llm-worker"] },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": true
+}

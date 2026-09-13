@@ -1,0 +1,49 @@
+# Strimzi 1.2.0 (KRaft-only, node pools mandatory). One dual-role node, ephemeral storage: a laptop
+# cluster, not a durable one — the outbox is the durability guarantee for events in flight.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  replicas: 1
+  roles:
+    - controller
+    - broker
+  storage:
+    type: ephemeral
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      memory: 1Gi
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: llm-mcp
+  namespace: kafka
+spec:
+  kafka:
+    version: 4.3.1
+    metadataVersion: 4.3-IV0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    jvmOptions:
+      -Xms: 384m
+      -Xmx: 384m
+    config:
+      auto.create.topics.enable: false        # topics are KafkaTopic CRs, exactly like compose's kafka-init
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  entityOperator:
+    topicOperator: {}                          # reconciles KafkaTopic CRs; no user operator (plain listener)

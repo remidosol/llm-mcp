@@ -1,0 +1,14 @@
+name: setup
+description: Tools from mise.toml (Temurin 21, Node, Buck2, OpenTofu, git-cliff) and the Maven repository cache
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@v4
+      with:
+        install: true
+        cache: true
+    - uses: actions/cache@v6
+      with:
+        path: ~/.m2/repository
+        key: maven-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: maven-${{ runner.os }}-

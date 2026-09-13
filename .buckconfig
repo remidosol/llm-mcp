@@ -1,0 +1,21 @@
+# Buck2 is the task runner: BUCK files say what each step reads and writes, so
+# `buck2 uquery "rdeps(//..., owner(<file>))"` can answer "what does this change affect?" (ADR-0027).
+# tools/buck2 is the prelude cell: its prelude.bzl is loaded into every BUCK file, rules/ holds the rules
+# (kept out of the Java tree; the name `buck/` is impossible next to the root BUCK file on macOS).
+[cells]
+  root = .
+  prelude = tools/buck2
+
+[buildfile]
+  name = BUCK
+
+# not part of the build graph
+[project]
+  ignore = references, buck-out, target, node_modules, .git, graphify-out, tools/buck2
+
+# defaults; CI overrides the registry: buck2 build -c llmmcp.registry=<region>-docker.pkg.dev/<project>/llmmcp //:docker
+# tag: empty = the current branch (what the main stack resolves to a digest); arch: local `image` targets only
+[llmmcp]
+  registry = llm-mcp
+  tag =
+  arch = arm64

@@ -1,0 +1,17 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092 # Boot 4.1 has no Kafka compose service connection - explicit
+  docker:
+    compose:
+      file: ../../compose.yaml
+      lifecycle-management: start-only
+  datasource:
+    url: jdbc:postgresql://localhost:5433/credit_db # compose maps 5433 -> container 5432
+    username: ${POSTGRES_USER:llm}
+    password: ${POSTGRES_PASSWORD:llm-local}
+  flyway:
+    locations: classpath:db/migration,classpath:db/local   # repeatable R__ seed (runs after every versioned migration) only in local
+
+logging:
+  level:
+    org.springframework.cache: TRACE

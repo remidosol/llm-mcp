@@ -1,0 +1,44 @@
+# Debezium writes heartbeats to __debezium-heartbeat.<topic.prefix>; with auto.create.topics.enable=false the
+# connector task blocks on UNKNOWN_TOPIC_OR_PARTITION until the topic exists — so they are declared like every other topic.
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: debezium-heartbeat-jobdb
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: __debezium-heartbeat.jobdb
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 3600000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: debezium-heartbeat-creditdb
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: __debezium-heartbeat.creditdb
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 3600000
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: debezium-heartbeat-llmdb
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: llm-mcp
+spec:
+  topicName: __debezium-heartbeat.llmdb
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 3600000

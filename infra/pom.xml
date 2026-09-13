@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CDKTN (CDK Terrain) stack for GCP — deliberately OUTSIDE the Spring reactor: different lifecycle
+     (synth/deploy, not verify), different toolchain (jsii + Node), never built by `./mvnw verify`. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.remidosol</groupId>
+    <artifactId>llm-mcp-infra</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <cdktn.version>0.24.0</cdktn.version>
+        <cdktn-provider-google.version>20.3.1</cdktn-provider-google.version>
+        <constructs.version>10.7.2</constructs.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.cdktn</groupId>
+            <artifactId>cdktn</artifactId>
+            <version>${cdktn.version}</version>
+        </dependency>
+        <!-- prebuilt Google provider bindings (no `cdktn get`, no code generation at build time) -->
+        <dependency>
+            <groupId>io.cdktn</groupId>
+            <artifactId>cdktn-provider-google</artifactId>
+            <version>${cdktn-provider-google.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.cdktn</groupId>
+            <artifactId>cdktn-provider-kubernetes</artifactId>
+            <version>17.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.cdktn</groupId>
+            <artifactId>cdktn-provider-helm</artifactId>
+            <version>15.1.0</version>
+        </dependency>
+        <!-- the CR manifests under deploy/ are read as YAML documents -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.7</version>
+        </dependency>
+        <dependency>
+            <groupId>software.constructs</groupId>
+            <artifactId>constructs</artifactId>
+            <version>${constructs.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <mainClass>com.remidosol.llmmcp.infra.Main</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,35 @@
+name: detect-changes
+description: Target determination — which Buck2 targets are affected by a diff (scripts/changed-targets.sh)
+inputs:
+  base:
+    description: base commit sha
+    required: true
+  head:
+    description: head commit sha
+    required: true
+outputs:
+  verify:
+    description: JSON list of //...:verify targets
+    value: ${{ steps.detect.outputs.verify }}
+  docker:
+    description: JSON list of //services/...:docker targets (each depends on its :verify)
+    value: ${{ steps.detect.outputs.docker }}
+  infra:
+    description: whether //infra targets are affected
+    value: ${{ steps.detect.outputs.infra }}
+  build:
+    description: space-separated verify + docker targets, ready for one `buck2 build`
+    value: ${{ steps.detect.outputs.build }}
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      run: |
+        BASE="${{ inputs.base }}"; [[ "$BASE" =~ ^0+$ || -z "$BASE" ]] && BASE="${{ inputs.head }}~1"
+        result=$(scripts/changed-targets.sh "$BASE" "${{ inputs.head }}")
+        echo "targets: $result" >> "$GITHUB_STEP_SUMMARY"
+        for key in verify docker infra; do
+          echo "$key=$(echo "$result" | jq -c ".$key")" >> "$GITHUB_OUTPUT"
+        done
+        echo "build=$(echo "$result" | jq -r '.verify + .docker | join(" ")')" >> "$GITHUB_OUTPUT"

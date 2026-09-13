@@ -1,0 +1,5 @@
+# GKE additions on top of the k8s profile (SPRING_PROFILES_ACTIVE=k8s,gke): JSON logs for Loki.
+logging:
+  structured:
+    format:
+      console: ecs        # Elastic Common Schema JSON; MDC (jobId) becomes a top-level field

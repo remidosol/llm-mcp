@@ -1,0 +1,10 @@
+# Base = environment-agnostic shape of the app tier. Overlays only change image tags, replicas,
+# demo knobs and exposure (ADR-0021: Kustomize for our own manifests, Helm only for operators).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - redis.yaml
+  - job-service
+  - credit-service
+  - llm-worker

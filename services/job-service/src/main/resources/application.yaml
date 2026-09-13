@@ -1,0 +1,116 @@
+spring:
+  application:
+    name: job-service
+  threads:
+    virtual:
+      enabled: true   # Java 21 virtual threads; see docs/notes/java-for-node-devs.md
+  mvc:
+    problemdetails:
+      enabled: true   # RFC 9457 application/problem+json error bodies (opt-in in Boot 4)
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # schema comes from Flyway only
+  cache:
+    type: redis
+    # per-cache TTLs are configured programmatically in CacheConfig
+  ai:
+    mcp:
+      server:
+        name: job-service
+        version: 1.0.0
+        protocol: STATELESS        # one HTTP request = one MCP call; no session, no SSE stream (ADR-0017)
+        instructions: "Submit LLM jobs (create_job), poll them (get_job/list_jobs) and read results (job://{jobId}/result)."
+        streamable-http:
+          mcp-endpoint: /mcp       # the STATELESS auto-configuration reads the streamable-http endpoint property
+  kafka:
+    template:
+      observation-enabled: true    # producer span + traceparent header on every record
+    listener:
+      observation-enabled: true    # consumer span joins the trace found in the record headers
+    producer:
+      # StringSerializer + the contracts JsonMapper: the envelope is plain JSON, no Spring type headers
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all                       # leader + all in-sync replicas acknowledge
+      properties:
+        enable.idempotence: true      # broker de-duplicates producer retries (no dedicated Boot key)
+        max.block.ms: 5000            # fail fast when the broker is unreachable (outbox retries next tick)
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: job-service
+      auto-offset-reset: earliest
+
+server:
+  port: 8081
+  # graceful shutdown is the Boot 4 default; stated here to document intent
+  shutdown: graceful
+
+management:
+  # OpenTelemetry (ADR-0024): traces + logs pushed over OTLP/HTTP to the collector (otel-lgtm), metrics scraped
+  # from /actuator/prometheus. Off unless OTEL_ENABLED=true, so a laptop without the collector logs no export errors.
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      enabled: ${OTEL_ENABLED:false}
+  logging:
+    export:
+      otlp:
+        enabled: ${OTEL_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
+      deployment.environment: ${SPRING_PROFILES_ACTIVE:local}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches
+  endpoint:
+    health:
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,db,redis,kafka   # traffic only when every dependency answers
+  # liveness/readiness health groups are enabled by default in Boot 4.1
+
+logging:
+  pattern:
+    correlation: "[${spring.application.name},%X{traceId:-},%X{spanId:-},%X{jobId:-}] "   # MDC jobId on every line (set by the inbox handler)
+
+app:
+  security:
+    api-keys: ${APP_API_KEYS:local-dev-key}          # comma-separated; ROLE_USER
+    admin-api-keys: ${APP_ADMIN_API_KEYS:local-admin-key} # ROLE_ADMIN (+USER)
+    mcp-open: false                                 # /mcp needs a key unless a profile opens it (local does)
+  mcp:
+    models: fake:demo,openai:gpt-4o-mini,gemini:gemini-2.5-flash   # completion suggestions for the compare_models prompt
+  outbox:
+    publisher: polling      # polling | cdc (cdc = Debezium reads the outbox table; poller disabled)
+    poll-interval: 500ms
+    batch-size: 100
+    send-timeout: 10s
+    retention: 7d
+    retention-cron: "0 0 3 * * *"
+  saga:
+    job-timeout: 120s         # CREDIT_RESERVED/PROCESSING older than this -> TIMED_OUT
+    watchdog-interval: 30s
+  credits:
+    default-multiplier: 1
+    multipliers:
+      fake: 1
+      openai: 3
+      gemini: 2
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

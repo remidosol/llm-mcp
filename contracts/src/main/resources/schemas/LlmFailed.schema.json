@@ -1,0 +1,5 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "LlmFailed", "type": "object",
+  "required": ["jobId", "provider", "model", "reason", "retryable", "attempts"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "provider": { "type": "string" }, "model": { "type": "string" },
+    "reason": { "type": "string" }, "retryable": { "type": "boolean" }, "attempts": { "type": "integer", "minimum": 1 } },
+  "additionalProperties": true }
