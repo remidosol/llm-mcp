@@ -110,11 +110,14 @@ make e2e                              # black-box saga tests against the running
 buck2 targets //... && make changed BASE=<sha>   # the Buck2 target graph and what a diff affects
 ```
 
-The build graph lives in `BUCK` files (Buck2 as a task runner): `push.yaml` computes which targets a
-push affects (`rdeps(//..., owner(<changed files>))`), verifies them, pushes only the affected service
-images to Artifact Registry with the commit sha (Jib, no Docker), and after approval on the `gke`
-environment applies the CDKTN stacks over Workload Identity Federation (no keys). `pull_request.yaml`
-verifies, synthesizes and posts a changelog; `mise.toml` pins the tools.
+The build graph lives in `BUCK` files (Buck2 as a task runner). A service's `:docker` target is its
+tests followed by a Jib push under the branch tag (`job-service:main`); the main stack resolves that
+tag to a digest at apply time. So `push.yaml` (manual trigger until the cloud path is exercised) is three commands: `buck2 build` the targets the push
+affects (`rdeps(//..., owner(<changed files>))`), `buck2 run //infra:apply@{common,main}` after
+approval on the `gke` environment (Workload Identity Federation, no keys), then the e2e suite against
+the rolled-out cluster. `pull_request.yaml` builds and pushes the affected images under the PR branch
+tag, comments the OpenTofu plan of both stacks against the base branch, and posts a changelog;
+`mise.toml` pins the tools.
 
 ## Cloud (GKE Autopilot)
 

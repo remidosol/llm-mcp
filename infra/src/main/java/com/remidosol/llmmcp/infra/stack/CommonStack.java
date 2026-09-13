@@ -56,22 +56,28 @@ public class CommonStack extends Stack {
                 .repositoryId(config.slug())
                 .location(config.region())
                 .format("DOCKER")
-                .description(config.displayName() + " service images (promoted from GHCR by the deploy workflow)")
+                .description(config.displayName() + " service images (pushed by buck2 //services/<s>:docker under the branch tag)")
                 .dependsOn(services)
                 .build();
 
         Construct gke = new Construct(this, "gke");
-        this.cluster = ContainerCluster.Builder.create(gke, "cluster")
+        ContainerCluster.Builder clusterBuilder = ContainerCluster.Builder.create(gke, "cluster")
                 .name(config.slug())
                 .location(config.region())               // regional Autopilot: control plane + nodes across zones
                 .enableAutopilot(true)
                 .deletionProtection(false)               // a demo; `cdktn destroy` must work
-                .ipAllocationPolicy(ContainerClusterIpAllocationPolicy.builder().build())     // VPC-native (Autopilot requirement)
                 .releaseChannel(ContainerClusterReleaseChannel.builder().channel("REGULAR").build())
                 .workloadIdentityConfig(ContainerClusterWorkloadIdentityConfig.builder()
                         .workloadPool(config.projectId() + ".svc.id.goog").build())          // KSA -> GSA without keys
-                .dependsOn(services)
-                .build();
+                .dependsOn(services);
+        // VPC-native either way (Autopilot requirement): GKE-managed ranges in the default network, or the
+        // organisation's Shared VPC with the host project's subnet and its named secondary ranges
+        config.sharedVpc().ifPresentOrElse(
+                vpc -> clusterBuilder.network(vpc.network()).subnetwork(vpc.subnetwork())
+                        .ipAllocationPolicy(ContainerClusterIpAllocationPolicy.builder()
+                                .clusterSecondaryRangeName(vpc.podsRange()).servicesSecondaryRangeName(vpc.servicesRange()).build()),
+                () -> clusterBuilder.ipAllocationPolicy(ContainerClusterIpAllocationPolicy.builder().build()));
+        this.cluster = clusterBuilder.build();
 
         Construct identity = new Construct(this, "identity");
         this.deployer = ServiceAccount.Builder.create(identity, "deployer")
@@ -127,6 +133,10 @@ public class CommonStack extends Stack {
 
     public ServiceAccount deployer() {
         return deployer;
+    }
+
+    public ArtifactRegistryRepository images() {
+        return images;
     }
 
     /** {@code <region>-docker.pkg.dev/<project>/<repo>} */

@@ -1,0 +1,28 @@
+name: pod-logs
+description: "Upload the tail of each deployment's pod logs as a workflow artifact (pair with if: failure())"
+inputs:
+  namespace:
+    description: namespace of the deployments
+    default: llm-mcp
+  deployments:
+    description: space-separated deployments
+    required: true
+  tail:
+    description: lines per deployment
+    default: "500"
+  name:
+    description: artifact name
+    default: pod-logs
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        mkdir -p .run/pod-logs
+        for d in ${{ inputs.deployments }}; do
+          kubectl -n "${{ inputs.namespace }}" logs "deployment/$d" --tail="${{ inputs.tail }}" > ".run/pod-logs/$d.log" 2>&1 || true
+        done
+    - uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        path: .run/pod-logs/*.log

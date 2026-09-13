@@ -1,0 +1,33 @@
+name: tofu-plan
+description: "buck2 build //infra:plan@<stack> (synth, init against the state bucket, plan) and post the plan as a PR comment"
+inputs:
+  stack:
+    description: CDKTN stack name (common | main)
+    required: true
+  image-tag:
+    description: Artifact Registry tag the main stack resolves to digests (a PR plans against its base branch)
+    default: main
+  token:
+    description: GitHub token for the comment
+    required: true
+runs:
+  using: composite
+  steps:
+    - id: plan
+      shell: bash
+      env:
+        IMAGE_TAG: ${{ inputs.image-tag }}
+      run: |
+        file="$(buck2 build --show-simple-output //infra:plan@${{ inputs.stack }} | awk '{print $NF}' | tail -n 1)"
+        echo "dir=$(dirname "$file")" >> "$GITHUB_OUTPUT"
+    - uses: borchero/terraform-plan-comment@v2
+      if: ${{ github.event_name == 'pull_request' }}   # a manual run has no PR to comment on
+      with:
+        working-directory: ${{ steps.plan.outputs.dir }}
+        planfile: tofu.plan
+        terraform-cmd: tofu
+        header: "Plan: ${{ inputs.stack }}"
+        skip-empty: true
+        token: ${{ inputs.token }}
+      env:
+        TMPDIR: /tmp

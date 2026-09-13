@@ -10,6 +10,7 @@ import com.remidosol.llmmcp.infra.kubernetes.core.Namespace;
 import com.remidosol.llmmcp.infra.kubernetes.core.Secret;
 import io.cdktn.cdktn.Fn;
 import io.cdktn.cdktn.TerraformVariable;
+import io.cdktn.providers.google.data_google_artifact_registry_docker_image.DataGoogleArtifactRegistryDockerImage;
 import io.cdktn.providers.google.data_google_client_config.DataGoogleClientConfig;
 import io.cdktn.providers.helm.provider.HelmProvider;
 import io.cdktn.providers.helm.provider.HelmProviderKubernetes;
@@ -31,8 +32,9 @@ import java.util.Map;
  * cluster with a short-lived token, operators via Helm, Kafka/Postgres CRs from the same YAML the
  * kind cluster uses, Secrets from sensitive variables, the three Spring services with CPU HPA on
  * the request-driven ones and a KEDA Kafka-lag ScaledObject on the worker, and otel-lgtm.
- * Image tags are variables ({@code TF_VAR_job_service_tag} …) so the deploy workflow pins the
- * immutable <sha> it promoted (ADR-0014).
+ * Images are pushed under the branch tag ({@code :main}) and resolved here to their digest with an
+ * Artifact Registry data source, so every apply pins exactly the bytes behind the tag at that moment:
+ * a changed digest rolls the Deployment, an unchanged one is a no-op — no tag variables to thread through CI.
  */
 public class MainStack extends Stack {
 
@@ -57,11 +59,6 @@ public class MainStack extends Stack {
         TerraformVariable apiKeys = variable("app_api_keys", "comma-separated user API keys");
         TerraformVariable adminApiKeys = variable("app_admin_api_keys", "comma-separated admin API keys");
         TerraformVariable pgPassword = variable("postgres_password", "password of the job/credit/llm database roles");
-        Map<String, TerraformVariable> tags = new LinkedHashMap<>();
-        for (String service : List.of("job-service", "credit-service", "llm-worker")) {
-            tags.put(service, TerraformVariable.Builder.create(this, service.replace('-', '_') + "_tag")
-                    .type("string").defaultValue("main").description("immutable image tag (short sha) of " + service).build());
-        }
 
         // --- namespaces
         Namespace kafkaNs = new Namespace(this, "ns-kafka", kubernetes, "kafka", "llm-mcp");
@@ -122,9 +119,12 @@ public class MainStack extends Stack {
         platformReady.addAll(postgres);
         platformReady.add(appSecrets);
         Map<String, SpringBootService> services = new LinkedHashMap<>();
-        services.put("job-service", service(kubernetes, config, common, "job-service", 8081, "job_db", "job", 2, 5, tags, otel, appNs, platformReady));
-        services.put("credit-service", service(kubernetes, config, common, "credit-service", 8082, "credit_db", "credit", 2, 5, tags, otel, appNs, platformReady));
-        services.put("llm-worker", service(kubernetes, config, common, "llm-worker", 8083, "llm_db", "llm", 1, null, tags, otel, appNs, platformReady));
+        services.put("job-service", service(kubernetes, config, common, "job-service", 8081, "job_db", "job", 2, 5, Map.of(), otel, appNs, platformReady));
+        services.put("credit-service", service(kubernetes, config, common, "credit-service", 8082, "credit_db", "credit", 2, 5, Map.of(), otel, appNs, platformReady));
+        // the fake provider's [FAIL]/[FLAKY]/[SLOW] prompt hooks stay on: the post-deploy e2e job drives the saga's
+        // failure and timeout paths with them, and they only ever affect fake:* models
+        services.put("llm-worker", service(kubernetes, config, common, "llm-worker", 8083, "llm_db", "llm", 1, null,
+                Map.of("APP_LLM_FAKE_FAILURE_INJECTION", "true"), otel, appNs, platformReady));
 
         // --- the worker scales on consumer lag, not CPU (KEDA)
         new KedaScaledObject(this, "llm-worker-scaler", kubernetes,
@@ -137,12 +137,15 @@ public class MainStack extends Stack {
     }
 
     private SpringBootService service(KubernetesProvider kubernetes, InfraConfig config, CommonStack common, String name,
-                                      int port, String database, String role, int replicas, Integer hpaMax,
-                                      Map<String, TerraformVariable> tags, OtelLgtm otel, Namespace ns, List<ITerraformDependable> dependsOn) {
+                                      int port, String database, String role, int replicas, Integer hpaMax, Map<String, String> extraEnv,
+                                      OtelLgtm otel, Namespace ns, List<ITerraformDependable> dependsOn) {
         Metadata meta = Metadata.of(name, ns.namespaceName(), "llm-mcp", config.environment());
-        String image = common.registryUrl() + "/" + name + ":" + tags.get(name).getStringValue();
+        // <name>:<branch> -> <registry>/<name>@sha256:... (the data source fails the plan if nothing was pushed yet)
+        DataGoogleArtifactRegistryDockerImage image = DataGoogleArtifactRegistryDockerImage.Builder.create(this, name + "-image")
+                .location(config.region()).repositoryId(common.images().getRepositoryId())
+                .imageName(name + ":" + config.imageTag()).build();
         return new SpringBootService(this, name, kubernetes, meta,
-                new SpringBootService.Spec(name, port, image, database, role, replicas, Map.of(), hpaMax),
+                new SpringBootService.Spec(name, port, image.getSelfLink(), database, role, replicas, extraEnv, hpaMax),
                 KAFKA_BOOTSTRAP, "redis", POSTGRES_HOST, otel.otlpEndpoint(), "app-secrets", dependsOn);
     }
 

@@ -157,6 +157,10 @@ kubectl -n llm-mcp rollout undo deploy/job-service
 
 ## Buck2 (task runner) and target determination
 
+Gotchas: `tools/buck2` is in `[project] ignore`, so the daemon does not watch edits to the `.bzl` rules —
+after changing them run `buck2 kill` (or the next command shows the OLD target definitions). `:docker`
+targets need a real registry and credentials (`gcloud auth configure-docker`); locally use `:image`.
+
 ```bash
 mise install                                    # Temurin 21, Node, buck2, buildifier, git-cliff, opentofu (mise.toml)
 buck2 targets //...                             # the graph
@@ -197,13 +201,22 @@ make infra-synth                                            # renders infra/cdkt
 cd infra && export GCP_PROJECT_ID=… GCP_REGION=europe-west1 GITHUB_REPOSITORY=remidosol/llm-mcp
 npx -y cdktn-cli@0.24.0 deploy common                        # <- OK required: APIs, registry, GKE Autopilot, deployer SA + WIF
 # outputs -> GitHub: secrets GCP_PROJECT_ID, GCP_WIF_PROVIDER (workload_identity_provider), GCP_DEPLOYER_SA (deployer_service_account),
-#            APP_API_KEYS, APP_ADMIN_API_KEYS, POSTGRES_PASSWORD; vars GCP_REGION; environment "gke" with required reviewers
+#            APP_API_KEYS, APP_ADMIN_API_KEYS, POSTGRES_PASSWORD, E2E_API_KEY, E2E_ADMIN_API_KEY; vars GCP_REGION;
+#            environment "gke" with required reviewers (create it BEFORE the first push, otherwise Actions auto-creates it without a gate).
+#            Organisation-level Shared VPC: INFRA_NETWORK / INFRA_SUBNETWORK (self-links) + INFRA_PODS_RANGE / INFRA_SERVICES_RANGE
+#            (secondary range names, default pods/services) as repository variables -> the cluster attaches to it; unset = default network.
+#            gh api -X PUT repos/$GITHUB_REPOSITORY/environments/gke -F 'reviewers[][type]=User' -F "reviewers[][id]=$(gh api user --jq .id)"
 # 2. main stack once, from the laptop (operators + Kafka/Postgres CRs + secrets + services + otel-lgtm + KEDA):
+buck2 build //:docker -c llmmcp.registry=$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/llmmcp   # images must exist before main can plan
 TF_VAR_app_api_keys=… TF_VAR_app_admin_api_keys=… TF_VAR_postgres_password=… npx -y cdktn-cli@0.24.0 deploy main
 #    kubernetes_manifest needs the CRDs at plan time -> on a fresh cluster run it twice (or --target the helm releases first)
-# 3. services: push to main -> push.yaml: detect -> verify affected -> buck2 build //services/<s>:docker (Jib -> Artifact Registry :sha)
-#    -> approval on "gke" -> buck2 run //infra:apply@main with TF_VAR_<service>_tag (wait_for_rollout fails the apply on a bad image)
-# 4. smoke against GKE: kubectl port-forward as in smoke-k8s; MCP via port-forward 8081
+# 2b. pull requests (trigger commented out, run by hand on a branch): pull_request.yaml builds + pushes the affected images as <service>:<pr-branch> and comments
+#     `buck2 build //infra:plan@{common,main}` (IMAGE_TAG = base branch, so the plan shows the target branch's state)
+# 3. services: run push.yaml by hand (Actions -> Push -> Run workflow; the push trigger is commented out until the cloud path is tried) -> buck2 build <affected :verify + :docker> (tests, then Jib -> Artifact Registry <service>:main)
+#    -> approval on "gke" -> buck2 run //infra:apply@common + apply@main (the main stack resolves <service>:main to its digest;
+#       wait_for_rollout fails the apply on a bad image). First deploy: run workflow_dispatch with build_all so every image exists.
+#    -> e2e job: rollout status + readiness, port-forwards (Kafka broker host mapped to localhost in /etc/hosts), make e2e; pod logs on failure
+# 4. smoke against GKE by hand: kubectl port-forward as in smoke-k8s; MCP via port-forward 8081
 # 5. tear down when not demoing: npx -y cdktn-cli@0.24.0 destroy main && npx -y cdktn-cli@0.24.0 destroy common
 ```
 

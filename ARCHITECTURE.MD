@@ -174,7 +174,7 @@ What each event does on arrival:
 | `infra/` | CDKTN (Java) `common` + `main` stacks and the Kubernetes constructs |
 | `tools/buck2/` | Buck2 prelude cell: `command` / `files` / `group` rules, Maven and CDKTN macros |
 | `scripts/` | `smoke.sh`, `mcp-check.sh`, `k8s-secrets.sh`, `changed-targets.sh` |
-| `.github/` | `push.yaml`, `pull_request.yaml`, `e2e.yml` and the composite actions |
+| `.github/` | `push.yaml` (verify, images, deploy, e2e against the cluster), `pull_request.yaml` and the composite actions |
 
 ### 4.2 Inside a service (hexagonal-lite)
 

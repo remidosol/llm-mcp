@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Pull Request
+
+# The reference PR flow: build what the PR affects (a service's :docker target = its tests, then a Jib push
+# under the PR branch tag, so the images are there to try), plan both CDKTN stacks against the base branch
+# and post the plans as comments, post a changelog (git-cliff). Credentials via WIF; the state bucket exists.
+# Manual only for now (same reason as push.yaml). To go live, restore:
+#   pull_request:
+#     branches: [main, development]
+# A manual run on a branch builds + pushes its images and plans both stacks; the PR comments need a PR
+# and are skipped (the plan is still in the job output).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/auth
+        with:
+          workload-identity-provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service-account: ${{ secrets.GCP_DEPLOYER_SA }}
+          region: ${{ env.GCP_REGION }}
+      - id: changes
+        uses: ./.github/actions/detect-changes
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+      - name: Verify and push what this PR affects (Jib, amd64, tag = PR branch)
+        env:
+          IMAGE_TAG: ${{ github.head_ref }}   # "/" is not allowed in a tag; sanitised below
+        run: |
+          targets="${{ steps.changes.outputs.build }}"
+          [ -z "$targets" ] && { echo "nothing to build" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          export IMAGE_TAG="${IMAGE_TAG//\//-}"
+          buck2 build $targets -c llmmcp.registry="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/llmmcp"
+          echo "built: $targets (images tagged :$IMAGE_TAG)" >> "$GITHUB_STEP_SUMMARY"
+
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/auth
+        with:
+          workload-identity-provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service-account: ${{ secrets.GCP_DEPLOYER_SA }}
+          region: ${{ env.GCP_REGION }}
+      - uses: ./.github/actions/tofu-plan
+        with:
+          stack: common
+          token: ${{ github.token }}
+      - uses: ./.github/actions/tofu-plan
+        with:
+          stack: main
+          image-tag: ${{ github.base_ref }}   # what would change on the target branch, with its images
+          token: ${{ github.token }}
+
+  changelog:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Generate
+        run: git cliff --config cliff.toml --output=changelog.md ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+      - uses: thollander/actions-comment-pull-request@v3
+        with:
+          comment-tag: changelog
+          file-path: changelog.md

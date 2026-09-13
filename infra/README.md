@@ -4,8 +4,8 @@ Two stacks (a shared foundation and the application), the same split we use in o
 
 | Stack | Owns | Deploy |
 |---|---|---|
-| `common` | GCP foundation: enabled APIs, Artifact Registry, regional GKE Autopilot cluster (Workload Identity on), deployer service account + Workload Identity Federation for GitHub Actions, optional Cloud SQL (`INFRA_CLOUD_SQL=true`) | once, by hand (`cdktn deploy common`) |
-| `main` | Everything on the cluster: namespaces, operators (Strimzi, CloudNativePG, KEDA via Helm), Kafka/Postgres CRs read from `../deploy/**`, Secrets from variables, the three Spring services, CPU HPA (job/credit), KEDA Kafka-lag ScaledObject (worker), otel-lgtm | by hand the first time, then by `deploy-<service>.yml` with `TF_VAR_<service>_tag` |
+| `common` | GCP foundation: enabled APIs, Artifact Registry, regional GKE Autopilot cluster (Workload Identity on; attached to the organisation's Shared VPC when `INFRA_NETWORK`/`INFRA_SUBNETWORK` are set), deployer service account + Workload Identity Federation for GitHub Actions, optional Cloud SQL (`INFRA_CLOUD_SQL=true`) | once, by hand (`cdktn deploy common`) |
+| `main` | Everything on the cluster: namespaces, operators (Strimzi, CloudNativePG, KEDA via Helm), Kafka/Postgres CRs read from `../deploy/**`, Secrets from variables, the three Spring services, CPU HPA (job/credit), KEDA Kafka-lag ScaledObject (worker), otel-lgtm | by hand the first time (after `buck2 build //:docker` so the `:main` images exist), then by `push.yaml` (`buck2 run //infra:apply@main`) — services are `<name>:<branch>` resolved to digests by an Artifact Registry data source |
 
 ## Layout
 

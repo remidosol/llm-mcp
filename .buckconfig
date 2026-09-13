@@ -13,8 +13,9 @@
 [project]
   ignore = references, buck-out, target, node_modules, .git, graphify-out, tools/buck2
 
-# defaults; override per call: buck2 build -c llmmcp.registry=... -c llmmcp.tag=... //services/...:docker
+# defaults; CI overrides the registry: buck2 build -c llmmcp.registry=<region>-docker.pkg.dev/<project>/llmmcp //:docker
+# tag: empty = the current branch (what the main stack resolves to a digest); arch: local `image` targets only
 [llmmcp]
   registry = llm-mcp
-  tag = local
+  tag =
   arch = arm64
