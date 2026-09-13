@@ -1,0 +1,20 @@
+# CDKTN stacks as targets: synth once, then init / plan / apply per stack.
+# plan and apply talk to the real state bucket and GCP — never run them without an explicit OK.
+
+stacks = ["common", "main"]
+
+command(
+    name = "compile",
+    command = ["../mvnw", "-B", "-q", "-f", "pom.xml", "compile"],
+    sources = glob(["src/**", "pom.xml"]) + ["//:maven"],
+    outputs = ["target/classes"],
+)
+
+command(
+    name = "synth",
+    command = ["npx", "-y", "cdktn-cli@0.24.0", "synth"],
+    sources = glob(["src/**", "pom.xml", "cdktf.json"]) + ["//:maven", "//deploy:manifests"],
+    outputs = ["cdktf.out/manifest.json"] + ["cdktf.out/stacks/{}/cdk.tf.json".format(stack) for stack in stacks],
+)
+
+[cdktn_stack(stack) for stack in stacks]

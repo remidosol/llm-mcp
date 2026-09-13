@@ -1,0 +1,9 @@
+{
+  "language": "java",
+  "app": "../mvnw -q -e compile exec:java",
+  "sendCrashReports": "false",
+  "terraformProviders": [],
+  "terraformModules": [],
+  "context": {},
+  "projectId": "3802b1a3-562d-499c-a16f-25a253ceb7bb"
+}
