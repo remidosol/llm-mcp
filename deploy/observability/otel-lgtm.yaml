@@ -1,0 +1,459 @@
+# grafana/otel-lgtm in the cluster (ADR-0024): OTel collector + Prometheus + Tempo + Loki + Grafana in
+# one pod. Demo-grade: no persistence, anonymous Grafana admin. Reach Grafana with `make grafana`.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-lgtm-config
+  namespace: observability
+data:
+  otelcol-config.yaml: |
+    # Collector config for grafana/otel-lgtm (replaces /otel-lgtm/otelcol-config.yaml). Same pipelines as
+    # the image default, plus a Prometheus receiver that scrapes the three services' /actuator/prometheus:
+    # traces and logs are PUSHED by the apps over OTLP, metrics are PULLED (Boot 4 ships no OTLP metrics
+    # auto-configuration; scraping keeps the Micrometer names the dashboards use).
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      prometheus/collector:
+        config:
+          scrape_configs:
+            - job_name: "opentelemetry-collector"
+              scrape_interval: 1s
+              static_configs:
+                - targets: ["127.0.0.1:8888"]
+      prometheus/services:
+        config:
+          scrape_configs:
+            - job_name: "llm-mcp"
+              scrape_interval: 10s
+              metrics_path: /actuator/prometheus
+              static_configs:
+                - targets: ["${env:SCRAPE_JOB_SERVICE}"]
+                  labels: { service: job-service }
+                - targets: ["${env:SCRAPE_CREDIT_SERVICE}"]
+                  labels: { service: credit-service }
+                - targets: ["${env:SCRAPE_LLM_WORKER}"]
+                  labels: { service: llm-worker }
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+        path: "/ready"
+    processors:
+      batch:
+    exporters:
+      otlp_http/metrics:
+        endpoint: http://127.0.0.1:9090/api/v1/otlp
+        tls:
+          insecure: true
+      otlp_http/traces:
+        endpoint: http://127.0.0.1:4418
+        tls:
+          insecure: true
+      otlp_http/logs:
+        endpoint: http://127.0.0.1:3100/otlp
+        tls:
+          insecure: true
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlp_http/traces]
+        metrics:
+          receivers: [otlp, prometheus/collector, prometheus/services]
+          processors: [batch]
+          exporters: [otlp_http/metrics]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlp_http/logs]
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: "llm-mcp"
+        type: file
+        options:
+          path: /otel-lgtm/dashboards-llm-mcp
+          foldersFromFilesStructure: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-lgtm-dashboards
+  namespace: observability
+data:
+  llm-mcp-saga.json: |
+    {
+      "title": "llm-mcp \u2014 saga, outbox, LLM, resilience",
+      "uid": "llm-mcp-saga",
+      "schemaVersion": 39,
+      "version": 1,
+      "tags": [
+        "llm-mcp"
+      ],
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "refresh": "10s",
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Saga funnel: transitions/min",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (to) (rate(saga_transition_total[5m])*60)",
+              "legendFormat": "-> {{to}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Guard rejections & late results",
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (from,to) (rate(saga_guard_rejected_total[5m])*60) or sum(rate(saga_late_result_total[5m])*60)",
+              "legendFormat": "{{from}}->{{to}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Outbox pending rows",
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "outbox_pending",
+              "legendFormat": "{{service}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Outbox publish latency p95",
+          "gridPos": {
+            "x": 12,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.95, sum by (le,service) (rate(outbox_publish_latency_seconds_bucket[5m])))",
+              "legendFormat": "{{service}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          },
+          "options": {}
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Inbox duplicates & DLT messages/min",
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (service) (rate(inbox_duplicate_total[5m])*60) or sum by (topic) (rate(dlt_messages_total[5m])*60)",
+              "legendFormat": "{{service}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "LLM call latency p95 by provider/outcome",
+          "gridPos": {
+            "x": 12,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.95, sum by (le,provider,outcome) (rate(llm_call_seconds_bucket[5m])))",
+              "legendFormat": "{{provider}}/{{outcome}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          },
+          "options": {}
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Tokens/min by provider",
+          "gridPos": {
+            "x": 0,
+            "y": 24,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (provider,kind) (rate(llm_tokens_total[5m])*60)",
+              "legendFormat": "{{provider}} {{kind}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Circuit breaker state (1 = in that state)",
+          "gridPos": {
+            "x": 12,
+            "y": 24,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "resilience4j_circuitbreaker_state",
+              "legendFormat": "{{name}} {{state}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Rate limit rejections/min",
+          "gridPos": {
+            "x": 0,
+            "y": 32,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (provider) (rate(ratelimit_rejected_total[5m])*60)",
+              "legendFormat": "{{provider}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "Kafka consumer lag (max, by group)",
+          "gridPos": {
+            "x": 12,
+            "y": 32,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (client_id) (kafka_consumer_fetch_manager_records_lag_max)",
+              "legendFormat": "{{client_id}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {}
+          },
+          "options": {}
+        }
+      ],
+      "templating": {
+        "list": []
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-lgtm
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-lgtm
+  template:
+    metadata:
+      labels:
+        app: otel-lgtm
+    spec:
+      containers:
+        - name: otel-lgtm
+          image: grafana/otel-lgtm:0.33.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SCRAPE_JOB_SERVICE
+              value: job-service.llm-mcp.svc.cluster.local:8081
+            - name: SCRAPE_CREDIT_SERVICE
+              value: credit-service.llm-mcp.svc.cluster.local:8082
+            - name: SCRAPE_LLM_WORKER
+              value: llm-worker.llm-mcp.svc.cluster.local:8083
+          ports:
+            - name: grafana
+              containerPort: 3000
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /otel-lgtm/otelcol-config.yaml
+              subPath: otelcol-config.yaml
+            - name: config
+              mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards/llm-mcp.yaml
+              subPath: provider.yaml
+            - name: dashboards
+              mountPath: /otel-lgtm/dashboards-llm-mcp
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              memory: 1536Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: grafana
+            periodSeconds: 10
+            failureThreshold: 30
+      volumes:
+        - name: config
+          configMap:
+            name: otel-lgtm-config
+        - name: dashboards
+          configMap:
+            name: otel-lgtm-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-lgtm
+  namespace: observability
+spec:
+  selector:
+    app: otel-lgtm
+  ports:
+    - name: grafana
+      port: 3000
+      targetPort: grafana
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http

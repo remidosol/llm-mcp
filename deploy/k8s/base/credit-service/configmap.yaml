@@ -11,3 +11,5 @@ data:
   SPRING_DATA_REDIS_PORT: "6379"
   # JVM sizes its heap from the cgroup limit (1Gi -> 768Mi heap); never hard-code -Xmx in a container
   JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+  OTEL_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm.observability.svc.cluster.local:4318

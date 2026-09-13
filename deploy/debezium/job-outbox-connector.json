@@ -21,7 +21,7 @@
   "transforms.outbox.table.field.event.key": "aggregateid",
   "transforms.outbox.table.field.event.payload": "payload",
   "transforms.outbox.table.expand.json.payload": "true",
-  "transforms.outbox.table.fields.additional.placement": "type:header:eventType,id:header:eventId",
+  "transforms.outbox.table.fields.additional.placement": "type:header:eventType,id:header:eventId,traceparent:header:traceparent",
   "transforms.outbox.table.op.invalid.behavior": "warn",
   "key.converter": "org.apache.kafka.connect.storage.StringConverter",
   "value.converter": "org.apache.kafka.connect.json.JsonConverter",

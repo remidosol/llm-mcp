@@ -122,5 +122,25 @@ services:
     labels:
       org.springframework.boot.ignore: "true"
 
+  # Phase 7 (ADR-0024): OTel collector + Prometheus + Tempo + Loki + Grafana in one container.
+  # Start with `make compose-up-observability`, then run the services with OTEL_ENABLED=true.
+  otel-lgtm:
+    image: grafana/otel-lgtm:0.33.0
+    profiles: ["observability"]
+    labels:
+      org.springframework.boot.ignore: "true"
+    ports:
+      - "3000:3000"   # Grafana (anonymous admin)
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    environment:
+      SCRAPE_JOB_SERVICE: host.docker.internal:8081
+      SCRAPE_CREDIT_SERVICE: host.docker.internal:8082
+      SCRAPE_LLM_WORKER: host.docker.internal:8083
+    volumes:
+      - ./deploy/observability/otelcol-config.yaml:/otel-lgtm/otelcol-config.yaml:ro
+      - ./deploy/observability/dashboards/provider.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/llm-mcp.yaml:ro
+      - ./deploy/observability/dashboards:/otel-lgtm/dashboards-llm-mcp:ro
+
 volumes:
   pgdata:

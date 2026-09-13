@@ -1,0 +1,6 @@
+# the manifests the infra main stack reads; exported so //infra:synth re-runs when they change
+files(
+    name = "manifests",
+    sources = glob(["kafka/**", "postgres/**", "observability/**", "k8s/base/redis.yaml"]),
+    visibility = ["//infra/..."],
+)
