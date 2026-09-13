@@ -1,0 +1,17 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+  docker:
+    compose:
+      file: ../../compose.yaml
+      lifecycle-management: start-only
+  datasource:
+    url: jdbc:postgresql://localhost:5433/llm_db
+    username: ${POSTGRES_USER:llm}
+    password: ${POSTGRES_PASSWORD:llm-local}
+
+app:
+  llm:
+    fake:
+      failure-injection: true
+      slow-delay: 30s          # demo-friendly (PRD default 150s); job-service local timeout is 20s
