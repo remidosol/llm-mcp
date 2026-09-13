@@ -21,7 +21,7 @@ make e2e          # black-box saga tests incl. [SLOW] timeout/late result and ou
 make stop-all
 ```
 
-Local-profile knobs that make demos fast (PRD defaults in parentheses): job timeout 20 s (120 s),
+Local-profile knobs that make demos fast (production defaults in parentheses): job timeout 20 s (120 s),
 watchdog every 5 s (30 s), fake `[SLOW]` delay 30 s (150 s). Chaos prompts (fake provider only):
 `[FAIL]` → FAILED + release, `[FLAKY]` → retryable failures on attempts 1–2 (retries arrive in Phase 5),
 `[SLOW]` → TIMED_OUT + release, then a late result (`job_result.late = true`, `saga_late_result_total`).
@@ -195,7 +195,7 @@ curl -s 'localhost:3000/api/datasources/proxy/uid/tempo/api/search?tags=service.
 # 0. one-time, by hand (a backend cannot create its own bucket)
 gcloud auth login && gcloud config set project $GCP_PROJECT_ID
 gsutil mb -l europe-west1 gs://$GCP_PROJECT_ID-llm-mcp-tfstate && gsutil versioning set on gs://$GCP_PROJECT_ID-llm-mcp-tfstate
-gcloud billing budgets create --billing-account=… --display-name=llm-mcp --budget-amount=20USD   # PRD cost control
+gcloud billing budgets create --billing-account=… --display-name=llm-mcp --budget-amount=20USD   # cost control
 # 1. infra (CDKTN, Java): synth is free, deploy is not
 make infra-synth                                            # renders infra/cdktf.out/stacks/{common,main}/cdk.tf.json
 cd infra && export GCP_PROJECT_ID=… GCP_REGION=europe-west1 GITHUB_REPOSITORY=remidosol/llm-mcp

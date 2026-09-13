@@ -1,6 +1,6 @@
 # Verified versions
 
-Rule (PRD §0.5, Appendix A): nothing in this table is used from memory — every value was read from
+Rule: nothing in this table is used from memory — every value was read from
 an official source on the date given. Update this file BEFORE first use of a new component.
 
 Verified 2026-08-29 unless noted.
@@ -56,10 +56,10 @@ Verified 2026-08-29 unless noted.
 | `@DataJpaTest` | `org.springframework.boot.data.jpa.test.autoconfigure` |
 | `TestRestTemplate` | `org.springframework.boot.resttestclient` (+`.autoconfigure.AutoConfigureTestRestTemplate`); included in `spring-boot-starter-webmvc-test` |
 
-## Corrections to PRD assumptions (recorded per PRD §0.1)
+## Corrections to initial assumptions
 
-- **Boot 4.1 has NO Kafka Docker Compose service connection** (regression vs Boot 3.2–3.5; verified against the 4.1.1 dev-services table and Boot source). PRD §7 assumed auto-wiring → `spring.kafka.bootstrap-servers` is set explicitly from Phase 2 on, and the compose kafka service carries `org.springframework.boot.ignore: "true"`. Testcontainers `@ServiceConnection` still auto-wires Kafka in tests.
-- **Debezium outbox SMT option key is `table.op.invalid.behavior`** (PRD Appendix B sketch says `op.invalid.behavior`, which does not exist in the 3.6 docs).
+- **Boot 4.1 has NO Kafka Docker Compose service connection** (regression vs Boot 3.2–3.5; verified against the 4.1.1 dev-services table and Boot source). The initial design assumed auto-wiring → `spring.kafka.bootstrap-servers` is set explicitly, and the compose kafka service carries `org.springframework.boot.ignore: "true"`. Testcontainers `@ServiceConnection` still auto-wires Kafka in tests.
+- **Debezium outbox SMT option key is `table.op.invalid.behavior`** (the initial sketch said `op.invalid.behavior`, which does not exist in the 3.6 docs).
 - **Strimzi is now versioned 1.x** (1.2.0; KRaft-only, `KafkaNodePool` required; ZooKeeper support removed since 0.46).
 - **Debezium 3.6 `snapshot.mode` values** are `initial`, `initial_only`, `no_data`, `always`, … (older `never`/`schema_only` names are gone); outbox connectors use `no_data` so already-published rows are not re-emitted (verified 2026-09-13 on the 3.6 Postgres connector page).
 - **CloudNativePG defaults `wal_level=logical`** — no extra config needed for Debezium (v1.30.0; `Database` CRD exists).
