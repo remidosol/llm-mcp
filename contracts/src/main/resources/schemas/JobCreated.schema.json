@@ -1,0 +1,7 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "JobCreated", "type": "object",
+  "required": ["jobId", "userId", "prompt", "model", "estimatedCredits"],
+  "properties": {
+    "jobId": { "type": "string", "format": "uuid" }, "userId": { "type": "string", "minLength": 1 },
+    "prompt": { "type": "string" }, "model": { "type": "string", "pattern": "^(openai|gemini|fake):.+" },
+    "estimatedCredits": { "type": "integer", "minimum": 1 } },
+  "additionalProperties": true }

@@ -1,0 +1,5 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "JobCompleted", "type": "object",
+  "required": ["jobId", "userId", "actualCredits"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "userId": { "type": "string" },
+    "actualCredits": { "type": "integer", "minimum": 0 } },
+  "additionalProperties": true }

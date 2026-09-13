@@ -1,0 +1,4 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "JobFailed", "type": "object",
+  "required": ["jobId", "userId", "reason"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "userId": { "type": "string" }, "reason": { "type": "string" } },
+  "additionalProperties": true }

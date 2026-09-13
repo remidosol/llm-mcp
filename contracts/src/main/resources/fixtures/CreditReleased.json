@@ -1,0 +1,12 @@
+{
+  "eventId": "019212f3-2b1e-7c1a-9d3f-1f2a3b4c5d0c",
+  "eventType": "CreditReleased",
+  "eventVersion": 1,
+  "occurredAt": "2026-09-01T10:00:00Z",
+  "aggregateType": "credit",
+  "aggregateId": "6e2c5f6b-3a52-7b1e-8f2d-9c4e5a6b7c8d",
+  "correlationId": "6e2c5f6b-3a52-7b1e-8f2d-9c4e5a6b7c8d",
+  "causationId": "019212f3-2b1e-7c1a-9d3f-1f2a3b4c5d09",
+  "producer": "credit-service",
+  "payload": { "jobId": "6e2c5f6b-3a52-7b1e-8f2d-9c4e5a6b7c8d", "reservationId": "0192f3a4-5b6c-7d8e-9f01-23456789abcd", "amount": 12 }
+}

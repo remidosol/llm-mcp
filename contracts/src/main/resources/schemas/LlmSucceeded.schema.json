@@ -1,0 +1,6 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "LlmSucceeded", "type": "object",
+  "required": ["jobId", "provider", "model", "output", "promptTokens", "completionTokens", "actualCredits"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "provider": { "type": "string" }, "model": { "type": "string" },
+    "output": { "type": "string" }, "promptTokens": { "type": "integer", "minimum": 0 }, "completionTokens": { "type": "integer", "minimum": 0 },
+    "actualCredits": { "type": "integer", "minimum": 0 } },
+  "additionalProperties": true }

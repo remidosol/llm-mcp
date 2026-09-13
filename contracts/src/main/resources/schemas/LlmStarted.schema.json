@@ -1,0 +1,5 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "LlmStarted", "type": "object",
+  "required": ["jobId", "provider", "model", "attemptNo"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "provider": { "type": "string" }, "model": { "type": "string" },
+    "attemptNo": { "type": "integer", "minimum": 1 } },
+  "additionalProperties": true }

@@ -1,0 +1,6 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "CreditReserved", "type": "object",
+  "required": ["jobId", "userId", "reservationId", "amount", "prompt", "model"],
+  "properties": { "jobId": { "type": "string", "format": "uuid" }, "userId": { "type": "string" },
+    "reservationId": { "type": "string", "format": "uuid" }, "amount": { "type": "integer", "minimum": 1 },
+    "prompt": { "type": "string" }, "model": { "type": "string" } },
+  "additionalProperties": true }

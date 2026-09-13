@@ -1,0 +1,12 @@
+{
+  "eventId": "019212f3-2b1e-7c1a-9d3f-1f2a3b4c5d04",
+  "eventType": "JobRejected",
+  "eventVersion": 1,
+  "occurredAt": "2026-09-01T10:00:00Z",
+  "aggregateType": "job",
+  "aggregateId": "6e2c5f6b-3a52-7b1e-8f2d-9c4e5a6b7c8d",
+  "correlationId": "6e2c5f6b-3a52-7b1e-8f2d-9c4e5a6b7c8d",
+  "causationId": "019212f3-2b1e-7c1a-9d3f-1f2a3b4c5d03",
+  "producer": "job-service",
+  "payload": { "jobId": "6e2c5f6b-3a52-7b1e-8f2d-9c4e5a6b7c8d", "reason": "insufficient credits" }
+}
